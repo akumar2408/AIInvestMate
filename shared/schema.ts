@@ -4,6 +4,7 @@ import {
   boolean,
   decimal,
   index,
+  integer,
   jsonb,
   pgTable,
   text,
@@ -126,6 +127,47 @@ export const reports = pgTable("reports", {
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   period: varchar("period").notNull(), // 'M2025-08', 'Q2025-Q3', 'Y2025'
   summary: text("summary").notNull(), // AI narrative
+  metricsJson: jsonb("metrics_json"), // Structured metrics data
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Categories and subcategories
+export const categories = pgTable("categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  parentId: varchar("parent_id").references(() => categories.id),
+  color: varchar("color"), // For UI display
+  icon: varchar("icon"), // Lucide icon name
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Recurring transaction rules
+export const recurringRules = pgTable("recurring_rules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: varchar("name").notNull(),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  merchant: varchar("merchant").notNull(),
+  category: varchar("category"),
+  direction: varchar("direction").notNull(), // 'income', 'expense', 'transfer'
+  cadence: varchar("cadence").notNull(), // 'daily', 'weekly', 'monthly'
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date"),
+  nextRunAt: timestamp("next_run_at").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Auto-categorization rules
+export const categoryRules = pgTable("category_rules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  merchantRegex: varchar("merchant_regex").notNull(),
+  amountMin: decimal("amount_min", { precision: 12, scale: 2 }),
+  amountMax: decimal("amount_max", { precision: 12, scale: 2 }),
+  categoryId: varchar("category_id").references(() => categories.id),
+  priority: integer("priority").default(0), // Higher priority rules apply first
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -149,6 +191,8 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   goals: many(goals),
   reports: many(reports),
   trustedDevices: many(trustedDevices),
+  recurringRules: many(recurringRules),
+  categoryRules: many(categoryRules),
 }));
 
 export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
@@ -226,6 +270,33 @@ export const trustedDevicesRelations = relations(trustedDevices, ({ one }) => ({
   }),
 }));
 
+export const categoriesRelations = relations(categories, ({ one, many }) => ({
+  parent: one(categories, {
+    fields: [categories.parentId],
+    references: [categories.id],
+  }),
+  children: many(categories),
+  categoryRules: many(categoryRules),
+}));
+
+export const recurringRulesRelations = relations(recurringRules, ({ one }) => ({
+  user: one(users, {
+    fields: [recurringRules.userId],
+    references: [users.id],
+  }),
+}));
+
+export const categoryRulesRelations = relations(categoryRules, ({ one }) => ({
+  user: one(users, {
+    fields: [categoryRules.userId],
+    references: [users.id],
+  }),
+  category: one(categories, {
+    fields: [categoryRules.categoryId],
+    references: [categories.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -272,6 +343,21 @@ export const insertReportSchema = createInsertSchema(reports).omit({
   createdAt: true,
 });
 
+export const insertCategorySchema = createInsertSchema(categories).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertRecurringRuleSchema = createInsertSchema(recurringRules).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCategoryRuleSchema = createInsertSchema(categoryRules).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -294,3 +380,12 @@ export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type InsertBudget = z.infer<typeof insertBudgetSchema>;
 export type InsertGoal = z.infer<typeof insertGoalSchema>;
 export type InsertReport = z.infer<typeof insertReportSchema>;
+
+export type Category = typeof categories.$inferSelect;
+export type InsertCategory = z.infer<typeof insertCategorySchema>;
+
+export type RecurringRule = typeof recurringRules.$inferSelect;
+export type InsertRecurringRule = z.infer<typeof insertRecurringRuleSchema>;
+
+export type CategoryRule = typeof categoryRules.$inferSelect;
+export type InsertCategoryRule = z.infer<typeof insertCategoryRuleSchema>;

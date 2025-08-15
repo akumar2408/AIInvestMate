@@ -14,6 +14,7 @@ import Investments from "@/pages/investments";
 import Reports from "@/pages/reports";
 import Subscribe from "@/pages/subscribe";
 import Profile from "@/pages/profile";
+import Automation from "@/pages/automation";
 import AIChatbot from "@/components/chat/AIChatbot";
 
 function Router() {
@@ -32,6 +33,7 @@ function Router() {
           <Route path="/goals" component={Goals} />
           <Route path="/investments" component={Investments} />
           <Route path="/reports" component={Reports} />
+          <Route path="/automation" component={Automation} />
           <Route path="/subscribe" component={Subscribe} />
           <Route path="/profile" component={Profile} />
         </>

@@ -13,7 +13,8 @@ import {
   FileText, 
   Crown,
   X,
-  TrendingUp
+  TrendingUp,
+  Bot
 } from "lucide-react";
 
 interface SidebarProps {
@@ -28,6 +29,7 @@ const navigation = [
   { name: "Goals", href: "/goals", icon: Target },
   { name: "Investments", href: "/investments", icon: PieChart },
   { name: "Reports", href: "/reports", icon: FileText },
+  { name: "Automation", href: "/automation", icon: Bot },
 ];
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {

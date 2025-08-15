@@ -8,7 +8,10 @@ import {
   insertBudgetSchema, 
   insertGoalSchema, 
   insertInvestmentSchema,
-  insertReportSchema 
+  insertReportSchema,
+  insertCategorySchema,
+  insertRecurringRuleSchema,
+  insertCategoryRuleSchema
 } from "@shared/schema";
 import { z } from "zod";
 import { aiService } from "./services/openai";
@@ -442,6 +445,146 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching dashboard summary:", error);
       res.status(500).json({ message: "Failed to fetch dashboard summary" });
+    }
+  });
+
+  // Categories routes
+  app.get('/api/categories', async (req, res) => {
+    try {
+      const categories = await storage.getCategories();
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      res.status(500).json({ message: "Failed to fetch categories" });
+    }
+  });
+
+  app.post('/api/categories', isAuthenticated, async (req: any, res) => {
+    try {
+      const validatedData = insertCategorySchema.parse(req.body);
+      const category = await storage.createCategory(validatedData);
+      res.json(category);
+    } catch (error) {
+      console.error("Error creating category:", error);
+      res.status(500).json({ message: "Failed to create category" });
+    }
+  });
+
+  // Recurring rules routes
+  app.get('/api/recurring-rules', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const rules = await storage.getRecurringRules(userId);
+      res.json(rules);
+    } catch (error) {
+      console.error("Error fetching recurring rules:", error);
+      res.status(500).json({ message: "Failed to fetch recurring rules" });
+    }
+  });
+
+  app.post('/api/recurring-rules', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = insertRecurringRuleSchema.parse({
+        ...req.body,
+        userId,
+      });
+      const rule = await storage.createRecurringRule(validatedData);
+      res.json(rule);
+    } catch (error) {
+      console.error("Error creating recurring rule:", error);
+      res.status(500).json({ message: "Failed to create recurring rule" });
+    }
+  });
+
+  app.put('/api/recurring-rules/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertRecurringRuleSchema.partial().parse(req.body);
+      const rule = await storage.updateRecurringRule(id, validatedData);
+      res.json(rule);
+    } catch (error) {
+      console.error("Error updating recurring rule:", error);
+      res.status(500).json({ message: "Failed to update recurring rule" });
+    }
+  });
+
+  app.delete('/api/recurring-rules/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteRecurringRule(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting recurring rule:", error);
+      res.status(500).json({ message: "Failed to delete recurring rule" });
+    }
+  });
+
+  // Category rules routes
+  app.get('/api/category-rules', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const rules = await storage.getCategoryRules(userId);
+      res.json(rules);
+    } catch (error) {
+      console.error("Error fetching category rules:", error);
+      res.status(500).json({ message: "Failed to fetch category rules" });
+    }
+  });
+
+  app.post('/api/category-rules', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = insertCategoryRuleSchema.parse({
+        ...req.body,
+        userId,
+      });
+      const rule = await storage.createCategoryRule(validatedData);
+      res.json(rule);
+    } catch (error) {
+      console.error("Error creating category rule:", error);
+      res.status(500).json({ message: "Failed to create category rule" });
+    }
+  });
+
+  app.delete('/api/category-rules/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteCategoryRule(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting category rule:", error);
+      res.status(500).json({ message: "Failed to delete category rule" });
+    }
+  });
+
+  // Enhanced transaction route with auto-categorization
+  app.post('/api/transactions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      let transactionData = insertTransactionSchema.parse({
+        ...req.body,
+        userId,
+        date: new Date(req.body.date),
+      });
+
+      // Auto-categorize if no category provided
+      if (!transactionData.category && transactionData.merchant) {
+        const suggestedCategory = await storage.applyCategoryRules(
+          userId,
+          transactionData.merchant,
+          Math.abs(parseFloat(transactionData.amount))
+        );
+        if (suggestedCategory) {
+          transactionData.category = suggestedCategory;
+        }
+      }
+
+      const transaction = await storage.createTransaction(transactionData);
+      res.json(transaction);
+    } catch (error) {
+      console.error("Error creating transaction:", error);
+      res.status(500).json({ message: "Failed to create transaction" });
     }
   });
 

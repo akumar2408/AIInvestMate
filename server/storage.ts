@@ -10,6 +10,9 @@ import {
   goals,
   reports,
   trustedDevices,
+  categories,
+  recurringRules,
+  categoryRules,
   type User,
   type UpsertUser,
   type Subscription,
@@ -20,6 +23,9 @@ import {
   type Budget,
   type Goal,
   type Report,
+  type Category,
+  type RecurringRule,
+  type CategoryRule,
   type InsertSubscription,
   type InsertUserProfile,
   type InsertBankAccount,
@@ -28,6 +34,9 @@ import {
   type InsertBudget,
   type InsertGoal,
   type InsertReport,
+  type InsertCategory,
+  type InsertRecurringRule,
+  type InsertCategoryRule,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
@@ -72,6 +81,24 @@ export interface IStorage {
   
   // Dashboard operations
   getDashboardSummary(userId: string): Promise<any>;
+
+  // Category operations
+  getCategories(): Promise<Category[]>;
+  createCategory(data: InsertCategory): Promise<Category>;
+
+  // Recurring rule operations
+  getRecurringRules(userId: string): Promise<RecurringRule[]>;
+  createRecurringRule(data: InsertRecurringRule): Promise<RecurringRule>;
+  updateRecurringRule(id: string, data: Partial<InsertRecurringRule>): Promise<RecurringRule>;
+  deleteRecurringRule(id: string): Promise<void>;
+
+  // Category rule operations
+  getCategoryRules(userId: string): Promise<CategoryRule[]>;
+  createCategoryRule(data: InsertCategoryRule): Promise<CategoryRule>;
+  deleteCategoryRule(id: string): Promise<void>;
+
+  // Auto-categorization
+  applyCategoryRules(userId: string, merchant: string, amount: number): Promise<string | null>;
   
   // Utility operations
   seedMockData(userId: string): Promise<void>;
@@ -523,6 +550,196 @@ export class DatabaseStorage implements IStorage {
     for (const investment of mockInvestments) {
       await this.createInvestment(investment);
     }
+
+    // Create default categories
+    const defaultCategories = [
+      { name: "Food & Dining", color: "#ef4444", icon: "UtensilsCrossed" },
+      { name: "Transportation", color: "#3b82f6", icon: "Car" },
+      { name: "Shopping", color: "#8b5cf6", icon: "ShoppingBag" },
+      { name: "Entertainment", color: "#f59e0b", icon: "Film" },
+      { name: "Bills & Utilities", color: "#10b981", icon: "Receipt" },
+      { name: "Healthcare", color: "#ec4899", icon: "Heart" },
+      { name: "Education", color: "#6366f1", icon: "GraduationCap" },
+      { name: "Travel", color: "#06b6d4", icon: "Plane" },
+      { name: "Investment", color: "#84cc16", icon: "TrendingUp" },
+      { name: "Income", color: "#22c55e", icon: "DollarSign" },
+      { name: "Other", color: "#6b7280", icon: "MoreHorizontal" },
+    ];
+
+    for (const category of defaultCategories) {
+      await this.createCategory(category);
+    }
+
+    // Create default recurring rules
+    const defaultRecurringRules = [
+      {
+        userId,
+        name: "Monthly Rent",
+        amount: "1200.00",
+        merchant: "Property Management Co",
+        category: "Bills & Utilities",
+        direction: "expense",
+        cadence: "monthly",
+        startDate: new Date(),
+        nextRunAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        isActive: true,
+      },
+      {
+        userId,
+        name: "Salary",
+        amount: "4500.00",
+        merchant: "Employer Inc",
+        category: "Income",
+        direction: "income",
+        cadence: "monthly",
+        startDate: new Date(),
+        nextRunAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        isActive: true,
+      },
+    ];
+
+    for (const rule of defaultRecurringRules) {
+      await this.createRecurringRule(rule);
+    }
+
+    // Create default category rules
+    const defaultCategoryRules = [
+      {
+        userId,
+        merchantRegex: "starbucks|coffee|cafe",
+        categoryId: null, // Will reference Food & Dining
+        priority: 100,
+        isActive: true,
+      },
+      {
+        userId,
+        merchantRegex: "uber|lyft|taxi",
+        categoryId: null, // Will reference Transportation
+        priority: 100,
+        isActive: true,
+      },
+      {
+        userId,
+        merchantRegex: "amazon|walmart|target",
+        categoryId: null, // Will reference Shopping
+        priority: 80,
+        isActive: true,
+      },
+    ];
+
+    // Get category IDs for rules
+    const categories = await this.getCategories();
+    const foodCategory = categories.find(c => c.name === "Food & Dining");
+    const transportCategory = categories.find(c => c.name === "Transportation");
+    const shoppingCategory = categories.find(c => c.name === "Shopping");
+
+    if (foodCategory) defaultCategoryRules[0].categoryId = foodCategory.id;
+    if (transportCategory) defaultCategoryRules[1].categoryId = transportCategory.id;
+    if (shoppingCategory) defaultCategoryRules[2].categoryId = shoppingCategory.id;
+
+    for (const rule of defaultCategoryRules) {
+      await this.createCategoryRule(rule);
+    }
+  }
+
+  // Category operations
+  async getCategories(): Promise<Category[]> {
+    return await db
+      .select()
+      .from(categories)
+      .orderBy(categories.name);
+  }
+
+  async createCategory(data: InsertCategory): Promise<Category> {
+    const [category] = await db
+      .insert(categories)
+      .values(data)
+      .returning();
+    return category;
+  }
+
+  // Recurring rule operations
+  async getRecurringRules(userId: string): Promise<RecurringRule[]> {
+    return await db
+      .select()
+      .from(recurringRules)
+      .where(eq(recurringRules.userId, userId))
+      .orderBy(desc(recurringRules.createdAt));
+  }
+
+  async createRecurringRule(data: InsertRecurringRule): Promise<RecurringRule> {
+    const [rule] = await db
+      .insert(recurringRules)
+      .values(data)
+      .returning();
+    return rule;
+  }
+
+  async updateRecurringRule(id: string, data: Partial<InsertRecurringRule>): Promise<RecurringRule> {
+    const [rule] = await db
+      .update(recurringRules)
+      .set(data)
+      .where(eq(recurringRules.id, id))
+      .returning();
+    return rule;
+  }
+
+  async deleteRecurringRule(id: string): Promise<void> {
+    await db
+      .delete(recurringRules)
+      .where(eq(recurringRules.id, id));
+  }
+
+  // Category rule operations
+  async getCategoryRules(userId: string): Promise<CategoryRule[]> {
+    return await db
+      .select()
+      .from(categoryRules)
+      .where(eq(categoryRules.userId, userId))
+      .orderBy(desc(categoryRules.priority));
+  }
+
+  async createCategoryRule(data: InsertCategoryRule): Promise<CategoryRule> {
+    const [rule] = await db
+      .insert(categoryRules)
+      .values(data)
+      .returning();
+    return rule;
+  }
+
+  async deleteCategoryRule(id: string): Promise<void> {
+    await db
+      .delete(categoryRules)
+      .where(eq(categoryRules.id, id));
+  }
+
+  // Auto-categorization
+  async applyCategoryRules(userId: string, merchant: string, amount: number): Promise<string | null> {
+    const rules = await this.getCategoryRules(userId);
+    
+    for (const rule of rules) {
+      if (!rule.isActive) continue;
+      
+      // Check merchant regex
+      const merchantRegex = new RegExp(rule.merchantRegex, 'i');
+      if (!merchantRegex.test(merchant)) continue;
+      
+      // Check amount range if specified
+      if (rule.amountMin && amount < parseFloat(rule.amountMin)) continue;
+      if (rule.amountMax && amount > parseFloat(rule.amountMax)) continue;
+      
+      // Get category name if categoryId is set
+      if (rule.categoryId) {
+        const [category] = await db
+          .select()
+          .from(categories)
+          .where(eq(categories.id, rule.categoryId))
+          .limit(1);
+        return category?.name || null;
+      }
+    }
+    
+    return null;
   }
 }
 
