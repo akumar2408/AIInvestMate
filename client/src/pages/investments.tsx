@@ -83,9 +83,9 @@ export default function Investments() {
   }
 
   // Calculate portfolio summary
-  const totalValue = investments?.reduce((sum: number, inv: any) => {
+  const totalValue = (investments || []).reduce((sum: number, inv: any) => {
     return sum + (parseFloat(inv.quantity) * parseFloat(inv.costBasis));
-  }, 0) || 0;
+  }, 0);
 
   const getTypeColor = (type: string) => {
     switch (type) {
@@ -150,7 +150,7 @@ export default function Investments() {
                 <div>
                   <p className="text-slate-400 text-sm">Total Holdings</p>
                   <p data-testid="text-total-holdings" className="text-2xl font-bold text-white mt-1">
-                    {investments?.length || 0}
+                    {(investments || []).length}
                   </p>
                 </div>
                 <div className="bg-blue-500/20 p-3 rounded-lg">
@@ -183,7 +183,7 @@ export default function Investments() {
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full" />
           </div>
-        ) : investments?.length === 0 ? (
+        ) : (investments || []).length === 0 ? (
           <Card className="bg-slate-800/40 backdrop-blur-sm border-slate-700/50">
             <CardContent className="py-12 text-center">
               <PieChart className="w-12 h-12 text-slate-400 mx-auto mb-4" />
@@ -207,7 +207,7 @@ export default function Investments() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {investments?.map((investment: any) => {
+                {(investments || []).map((investment: any) => {
                   const currentValue = parseFloat(investment.quantity) * parseFloat(investment.costBasis);
                   
                   return (

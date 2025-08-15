@@ -20,7 +20,7 @@ export default function Transactions() {
   
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -86,14 +86,14 @@ export default function Transactions() {
     return null;
   }
 
-  const filteredTransactions = transactions?.filter((transaction: any) => {
+  const filteredTransactions = (transactions || []).filter((transaction: any) => {
     const matchesSearch = transaction.merchant?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          transaction.category?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = !categoryFilter || transaction.category === categoryFilter;
+    const matchesCategory = categoryFilter === "all" || !categoryFilter || transaction.category === categoryFilter;
     return matchesSearch && matchesCategory;
-  }) || [];
+  });
 
-  const categories = Array.from(new Set(transactions?.map((t: any) => t.category).filter(Boolean))) as string[];
+  const categories = Array.from(new Set((transactions || []).map((t: any) => t.category).filter(Boolean))) as string[];
 
   return (
     <AppLayout>
@@ -142,7 +142,7 @@ export default function Transactions() {
                     <SelectValue placeholder="All Categories" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Categories</SelectItem>
+                    <SelectItem value="all">All Categories</SelectItem>
                     {categories.map((category) => (
                       <SelectItem key={category} value={category}>
                         {category}

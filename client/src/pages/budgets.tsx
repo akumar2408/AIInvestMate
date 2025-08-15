@@ -88,13 +88,13 @@ export default function Budgets() {
 
   // Calculate spending by category for current month
   const currentMonth = new Date().toISOString().slice(0, 7);
-  const monthlySpending = transactions?.reduce((acc: any, transaction: any) => {
+  const monthlySpending = (transactions || []).reduce((acc: any, transaction: any) => {
     const transactionMonth = transaction.date.slice(0, 7);
     if (transactionMonth === currentMonth && transaction.direction === 'expense') {
       acc[transaction.category] = (acc[transaction.category] || 0) + Math.abs(parseFloat(transaction.amount));
     }
     return acc;
-  }, {}) || {};
+  }, {});
 
   return (
     <AppLayout>
@@ -120,7 +120,7 @@ export default function Budgets() {
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full" />
           </div>
-        ) : budgets?.length === 0 ? (
+        ) : (budgets || []).length === 0 ? (
           <Card className="bg-slate-800/40 backdrop-blur-sm border-slate-700/50">
             <CardContent className="py-12 text-center">
               <TrendingUp className="w-12 h-12 text-slate-400 mx-auto mb-4" />
@@ -139,7 +139,7 @@ export default function Budgets() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {budgets?.map((budget: any) => {
+            {(budgets || []).map((budget: any) => {
               const spent = monthlySpending[budget.category] || 0;
               const remaining = parseFloat(budget.monthlyCap) - spent;
               const percentage = Math.min((spent / parseFloat(budget.monthlyCap)) * 100, 100);

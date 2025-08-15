@@ -72,17 +72,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.updateUserStripeCustomerId(userId, customerId);
         }
 
-        const priceIds = {
-          pro: process.env.STRIPE_PRO_PRICE_ID,
-          premium: process.env.STRIPE_PREMIUM_PRICE_ID,
+        // Use price_data for demo purposes since we don't have actual Stripe product IDs
+        const planPrices = {
+          pro: { amount: 999, name: 'Pro Plan' }, // $9.99
+          premium: { amount: 1999, name: 'Premium Plan' }, // $19.99
         };
+
+        const selectedPlan = planPrices[plan as keyof typeof planPrices];
+        if (!selectedPlan) {
+          return res.status(400).json({ message: "Invalid plan selected" });
+        }
 
         const session = await stripe.checkout.sessions.create({
           customer: customerId,
           payment_method_types: ['card'],
           line_items: [
             {
-              price: priceIds[plan as keyof typeof priceIds],
+              price_data: {
+                currency: 'usd',
+                product_data: {
+                  name: selectedPlan.name,
+                  description: `${selectedPlan.name} - AI Investmate`,
+                },
+                unit_amount: selectedPlan.amount,
+                recurring: {
+                  interval: 'month',
+                },
+              },
               quantity: 1,
             },
           ],

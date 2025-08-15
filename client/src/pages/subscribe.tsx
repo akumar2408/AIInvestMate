@@ -42,8 +42,8 @@ export default function Subscribe() {
       } else {
         throw new Error("No checkout URL received");
       }
-    } catch (error) {
-      if (isUnauthorizedError(error)) {
+    } catch (error: any) {
+      if (isUnauthorizedError(error as Error)) {
         toast({
           title: "Unauthorized",
           description: "You are logged out. Logging in again...",
