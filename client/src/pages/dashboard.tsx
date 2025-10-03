@@ -1,67 +1,53 @@
-import { useAuth } from "@/hooks/useAuth";
-import { useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
-import AppLayout from "@/components/layout/AppLayout";
-import FinancialOverview from "@/components/dashboard/FinancialOverview";
-import AIInsights from "@/components/dashboard/AIInsights";
-import SpendingChart from "@/components/dashboard/SpendingChart";
-import RecentActivity from "@/components/dashboard/RecentActivity";
-import GoalProgress from "@/components/dashboard/GoalProgress";
-import PortfolioSummary from "@/components/dashboard/PortfolioSummary";
+import React from "react";
+import { useStore, monthKey } from "../state/store";
 
-export default function Dashboard() {
-  const { toast } = useToast();
-  const { isAuthenticated, isLoading } = useAuth();
+export function Dashboard() {
+  const { state } = useStore();
+  const thisMonth = new Date().toISOString().slice(0,7);
+  const txns = state.txns.filter(t => monthKey(t.date) === thisMonth);
+  const income = txns.filter(t => t.amount > 0).reduce((a,b)=>a+b.amount,0);
+  const spend = Math.abs(txns.filter(t => t.amount < 0).reduce((a,b)=>a+b.amount,0));
+  const savings = Math.max(0, income - spend);
+  const savingsRate = income ? Math.round((savings / income) * 100) : 0;
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-      return;
-    }
-  }, [isAuthenticated, isLoading, toast]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return null;
-  }
+  const topCats = Object.entries(txns.reduce((acc:any,t)=>{
+    if (t.amount<0) acc[t.category]=(acc[t.category]||0)+Math.abs(t.amount);
+    return acc;
+  },{})).sort((a:any,b:any)=>b[1]-a[1]).slice(0,5);
 
   return (
-    <AppLayout>
-      <main className="flex-1 overflow-y-auto p-6 space-y-6">
-        {/* Financial Overview Cards */}
-        <FinancialOverview />
-        
-        {/* AI Insights and Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <AIInsights />
-          <div className="lg:col-span-2">
-            <SpendingChart />
+    <section style={{marginTop: 12}}>
+      <div className="hero">
+        <div className="card pad">
+          <div className="title">This month</div>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12}}>
+            <Kpi label="Income" value={`$${income.toFixed(0)}`} />
+            <Kpi label="Spending" value={`$${spend.toFixed(0)}`} />
+            <Kpi label="Savings rate" value={`${savingsRate}%`} />
           </div>
         </div>
-        
-        {/* Recent Activity and Goals */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <RecentActivity />
-          <GoalProgress />
+        <div className="card pad">
+          <div className="title">Top 5 categories</div>
+          {topCats.length ? topCats.map(([c,v])=> (
+            <div key={c} style={{display:'grid', gridTemplateColumns:'120px 1fr 60px', gap:8, alignItems:'center', margin:'8px 0'}}>
+              <div className="muted">{c}</div>
+              <div style={{background:'#0b1324', border:'1px solid #26334a', borderRadius:12, overflow:'hidden'}}>
+                <div style={{height:10, width:`${Math.min(100, v/spend*100)}%`, background:'linear-gradient(180deg,#22c55e,#16a34a)'}} />
+              </div>
+              <div style={{textAlign:'right'}}>${Number(v).toFixed(0)}</div>
+            </div>
+          )) : <div className="muted">No data yet. Add transactions!</div>}
         </div>
-        
-        {/* Investment Portfolio Summary */}
-        <PortfolioSummary />
-      </main>
-    </AppLayout>
+      </div>
+    </section>
+  );
+}
+
+function Kpi({label, value}:{label:string, value:string}){
+  return (
+    <div className="card pad" style={{background:'linear-gradient(180deg, rgba(34,197,94,.08), rgba(12,25,40,.35))'}}>
+      <div className="muted">{label}</div>
+      <div style={{fontWeight:800, fontSize:24}}>{value}</div>
+    </div>
   );
 }

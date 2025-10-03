@@ -69,7 +69,7 @@ export default function AIChat() {
       const res = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: msg }),
+        body: JSON.stringify({ message: msg, context: window.localStorage.getItem("aimate_state_v1") || "{}" }),
       });
       const data: AIResponse = await res.json();
       setMessages(m => [...m, { id: crypto.randomUUID(), role: "assistant", content: data.reply }]);
