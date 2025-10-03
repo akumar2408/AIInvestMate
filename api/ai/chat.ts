@@ -1,4 +1,3 @@
-// Vercel Serverless Function for AI chat
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import OpenAI from 'openai';
 
@@ -35,7 +34,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { message } = req.body || {};
     const apiKey = process.env.OPENAI_API_KEY;
 
-    // Demo fallback if no key
     if (!apiKey) {
       const reply =
         "I'm in demo mode. Quick tips:\n" +
