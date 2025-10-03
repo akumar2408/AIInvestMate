@@ -1,7 +1,10 @@
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 
-const url = process.env.SUPABASE_DB_URL; // e.g. postgresql://user:pass@host:6543/db
+const url = process.env.SUPABASE_DB_URL; // postgresql://...:6543/... ?sslmode=require
 export const hasDB = !!url;
 
-export const db = hasDB ? drizzle(postgres(url!, { ssl: "prefer", max: 1 })) : null;
+// force SSL + tiny pool for serverless
+export const db = hasDB
+  ? drizzle(postgres(url!, { ssl: "require", max: 1 }))
+  : null;
