@@ -45,7 +45,19 @@ export function BudgetsPage() {
           );
         })}
         {!state.budgets.filter(b=>b.month===month).length && <div className="muted">No budgets yet.</div>}
+      
+      <div style={{marginTop:10, display:'flex', gap:8}}>
+        <button className="ghost" onClick={()=>{
+          const data = state.budgets;
+          const csv = toCSV(data);
+          const blob = new Blob([csv], { type: "text/csv" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url; a.download = "budgets.csv"; a.click();
+          URL.revokeObjectURL(url);
+        }}>Export Budgets CSV</button>
       </div>
+
     </section>
   );
 }

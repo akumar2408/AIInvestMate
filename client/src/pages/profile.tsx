@@ -1,6 +1,8 @@
 import React from "react";
 import { useStore } from "../state/store";
 
+import { SyncPanel } from "../components/SyncPanel";
+
 export function ProfilePage() {
   const { exportAll } = useStore();
   return (
@@ -15,6 +17,8 @@ export function ProfilePage() {
           URL.revokeObjectURL(url);
         }}>Download JSON</button>
       </div>
+      <div id="auth-slot"></div>
+          <SyncPanel />
     </section>
   );
 }

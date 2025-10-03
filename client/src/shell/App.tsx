@@ -6,10 +6,11 @@ import { BudgetsPage } from "../pages/budgets";
 import { GoalsPage } from "../pages/goals";
 import { ReportsPage } from "../pages/reports";
 import { ProfilePage } from "../pages/profile";
+import { SimulatorPage } from "../pages/simulator";
 import AIChat from "../components/AIChat";
 import { StoreProvider } from "../state/store";
 
-type Route = "dashboard" | "transactions" | "budgets" | "goals" | "reports" | "chat" | "profile";
+type Route = "dashboard" | "transactions" | "budgets" | "goals" | "reports" | "chat" | "sim" | "profile";
 
 export default function App() {
   const [route, setRoute] = useState<Route>("dashboard");
@@ -46,6 +47,7 @@ export default function App() {
             <NavLink to="goals">Goals</NavLink>
             <NavLink to="reports">Reports</NavLink>
             <NavLink to="chat">AI</NavLink>
+            <NavLink to="sim">Simulator</NavLink>
             <NavLink to="profile">Profile</NavLink>
           </nav>
         </header>
@@ -56,6 +58,7 @@ export default function App() {
         {route === "goals" && <GoalsPage />}
         {route === "reports" && <ReportsPage />}
         {route === "chat" && <section style={{marginTop:20}}><div className="card pad"><AIChat /></div></section>}
+        {route === "sim" && <SimulatorPage />}
         {route === "profile" && <ProfilePage />}
 
         <footer className="footer">© {new Date().getFullYear()} AI InvestMate</footer>

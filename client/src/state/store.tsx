@@ -25,6 +25,7 @@ export type Goal = {
 };
 
 type State = {
+  userId?: string;
   txns: Txn[];
   budgets: Budget[];
   goals: Goal[];
@@ -49,7 +50,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const raw = localStorage.getItem(KEY);
       if (raw) return JSON.parse(raw);
     } catch {}
-    return { txns: [], budgets: [], goals: [] };
+    return { txns: [], budgets: [], goals: [], userId: undefined };
   });
 
   useEffect(() => {
@@ -101,4 +102,24 @@ export function useStore() {
 // helpers
 export function monthKey(dateISO: string) {
   return dateISO.slice(0,7); // YYYY-MM
+}
+
+export function detectAnomalies(txns: Txn[]) {
+  // naive: compare this month's spend to average of prior 3 months
+  const byMonth: Record<string, number> = {};
+  for (const t of txns) {
+    const m = monthKey(t.date);
+    if (t.amount < 0) byMonth[m] = (byMonth[m] || 0) + Math.abs(t.amount);
+  }
+  const months = Object.keys(byMonth).sort();
+  const cur = months[months.length-1];
+  if (!cur) return [];
+  const prev3 = months.slice(Math.max(0, months.length-4), months.length-1);
+  const avgPrev = prev3.length ? prev3.reduce((a,m)=>a+(byMonth[m]||0),0)/prev3.length : 0;
+  const spikes = [];
+  const curVal = byMonth[cur] || 0;
+  if (avgPrev && curVal > avgPrev * 1.3) {
+    spikes.push({ type: "spend_spike", month: cur, current: curVal, avgPrev });
+  }
+  return spikes;
 }

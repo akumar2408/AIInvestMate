@@ -1,5 +1,5 @@
 import React from "react";
-import { useStore, monthKey } from "../state/store";
+import { useStore, monthKey, detectAnomalies } from "../state/store";
 
 export function Dashboard() {
   const { state } = useStore();
@@ -37,6 +37,15 @@ export function Dashboard() {
               <div style={{textAlign:'right'}}>${Number(v).toFixed(0)}</div>
             </div>
           )) : <div className="muted">No data yet. Add transactions!</div>}
+        
+        </div>
+        <div className="card pad">
+          <div className="title">Anomalies</div>
+          {detectAnomalies(state.txns).length ? detectAnomalies(state.txns).map((a,i)=> (
+            <div key={i} className="muted" style={{margin:'6px 0'}}>
+              ⚠️ <b>Spending spike</b> in {a.month}: ${a.current.toFixed(0)} vs avg ${a.avgPrev.toFixed(0)} (last 3 mo)
+            </div>
+          )) : <div className="muted">No anomalies detected.</div>}
         </div>
       </div>
     </section>

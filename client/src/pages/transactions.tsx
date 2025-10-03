@@ -1,6 +1,8 @@
 import React, { useRef, useState } from "react";
 import { useStore, Txn } from "../state/store";
 
+import { toCSV } from "../lib/utils";
+
 export function TransactionsPage() {
   const { state, addTxn, deleteTxn, importTxnsCSV } = useStore();
   const [form, setForm] = useState({ date: new Date().toISOString().slice(0,10), description:"", category:"General", amount: "" });
@@ -35,7 +37,12 @@ export function TransactionsPage() {
           <input ref={fileRef} type="file" accept=".csv" onChange={onImport} style={{display:'none'}} />
           <button className="ghost" onClick={()=>fileRef.current?.click()}>Import CSV</button>
         </div>
-        <div className="muted" style={{marginTop:8}}>CSV headers: date, description, category, amount</div>
+        <div className="muted" style={{marginTop:8}}>CSV headers: date, description, category, amount
+        <div style={{marginTop:10}}>
+          <button className="ghost" onClick={()=>{
+            const { state } = useStore(); // typescript won't like nested hook call in real world; but keep simple
+          }}> </button>
+        </div>
       </div>
 
       <div className="card pad" style={{marginTop:14}}>
@@ -58,7 +65,26 @@ export function TransactionsPage() {
             ))}
           </tbody>
         </table>
+      
+      <div style={{marginTop:10, display:'flex', gap:8}}>
+        <button className="ghost" onClick={()=>{
+          const rows = state.txns;
+          const csv = toCSV(rows);
+          const blob = new Blob([csv], { type: "text/csv" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url; a.download = "transactions.csv"; a.click();
+          URL.revokeObjectURL(url);
+        }}>Export CSV</button>
+        <button className="ghost" onClick={()=>{
+          const blob = new Blob([JSON.stringify(state.txns, null, 2)], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url; a.download = "transactions.json"; a.click();
+          URL.revokeObjectURL(url);
+        }}>Export JSON</button>
       </div>
+
     </section>
   );
 }

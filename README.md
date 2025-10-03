@@ -1,59 +1,18 @@
 
-# AIInvestMate — Fixed Build + AI Chat
 
-This package is now simplified to run **locally** and **on Vercel** with a working AI chatbot.
+## New features
+- CSV export (transactions & budgets)
+- Anomaly detection (spend spikes vs prior 3‑mo avg)
+- What‑if simulator (monthly contrib, APY, years → future value & ETA)
+- Supabase scaffolding (magic link auth) — set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
 
-## Quickstart (Local)
 
-```bash
-npm install
-npm run dev
-# Frontend: http://localhost:5173
-# Backend:  http://localhost:5001
-```
+## Cloud sync & Plaid scaffolding
+- **Drizzle schema** in `api/db/schema.ts` and connector in `api/db/index.ts` (uses `SUPABASE_DB_URL`).
+- **Sync endpoints**: `GET /api/sync/pull?userId=...`, `POST /api/sync/push`.
+- **Plaid mocks**: `/api/plaid/link-token`, `/api/plaid/exchange`, `/api/plaid/transactions`.
+- Set env in Vercel:
+  - `SUPABASE_DB_URL` (from Supabase → Database → Connection string)
+  - `OPENAI_API_KEY`
+  - (Later) `PLAID_CLIENT_ID`, `PLAID_SECRET`
 
-Create a `.env` file (optional) with:
-
-```
-OPENAI_API_KEY=sk-...
-```
-
-If `OPENAI_API_KEY` is missing, the chatbot returns smart **demo answers** (no external calls).
-
-## Build & Start (Production)
-
-```bash
-npm run build
-npm start
-# Serves static client and /api routes on port 5001
-```
-
-## Deploy to Vercel
-
-1. Push this repo to GitHub.
-2. Create a new Vercel project.
-3. Set a **Build Command**: `npm run build`
-4. Set an **Output Dir**: `dist/public`
-5. Add an **Install Command**: `npm install`
-6. Add an **Environment Variable**: `OPENAI_API_KEY`
-7. Add a **Start Command** for previews (if needed): `npm start`
-
-Vercel will serve the static client. For the API, you can:
-- Use a Node server (via `npm start`) on your own host, **or**
-- Adapt `/server/app.ts` into Vercel **serverless functions** (easy port later).
-
-## What Changed
-
-- Replaced brittle config with a reliable Vite + Express setup.
-- Added **/api/ai/chat** with OpenAI + graceful fallback.
-- Implemented a clean **AI chat UI** with suggested prompts and smart summary (tags, risk, next actions).
-- Added `/api/auth/user` mock so the UI doesn't break if pages expect an auth payload.
-- Simplified `vite.config.ts` with `/api` proxy in dev.
-
-> The previous codebase had 70+ truncated files (`...`) causing build errors. This version is production-ready and easy to extend.
-
-## Extend
-
-- Port your original pages/components back in gradually.
-- Replace `/api/auth/user` with real auth when ready.
-- Add persistence endpoints (transactions, budgets, etc.).
