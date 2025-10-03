@@ -1,0 +1,203 @@
+Awesome—here are **high-impact features** you can add to **AI Investmate** on Replit, plus **how** to wire each one into your current stack (React + TS, Node/Express, Drizzle/Postgres, Stripe, Plaid). I split them into **quick wins** (ship this week) and **bigger rocks** (differentiators).
+
+---
+
+# Quick wins (1–3 days each)
+
+1. **Recurring transactions & rules**
+
+* **Why:** Auto-post rent, subscriptions, paychecks; reduces user friction.
+* **Add:** `RecurringRule { id, userId, cadence: 'daily|weekly|monthly', amount, category, startDate, endDate?, nextRunAt }`
+* **API:** `POST /api/recurring`, cron/queue runs daily to materialize entries.
+* **UI:** Toggle “Make recurring” in `TransactionForm`.
+
+2. **Multi-currency + FX snapshot**
+
+* **Why:** International users, travel cards.
+* **Add:** `UserProfile.currency`, `FxRate { base, quote, rate, fetchedAt }`.
+* **UI:** Currency switch; show converted totals.
+* **Tip:** Cache FX from a free source or seed mock in dev.
+
+3. **Categories & subcategories**
+
+* **Why:** Finer insights (Food → Groceries/Restaurants).
+* **Add:** `Category { id, parentId?, name }`.
+* **AI:** Train/call categorize endpoint to pick subcategory; allow manual override.
+
+4. **Rules-based auto-categorization**
+
+* **Why:** Users want deterministic control.
+* **Add:** `CategoryRule { merchantRegex, amountMin?, amountMax?, categoryId }`.
+* **API:** Apply on ingest and on edits; show “Rule matched” chip.
+
+5. **Duplicate detection**
+
+* **Why:** Prevent Plaid + manual duplicates.
+* **Add:** Unique hash on `(userId, accountId, date, amount, merchantHash)`.
+* **UI:** “Possible duplicate” banner with merge/ignore.
+
+6. **Saved reports (monthly/quarterly)**
+
+* **Why:** One-tap history of AI narratives.
+* **Add:** `Report { period, summary, metricsJson }`.
+* **UI:** Reports list + regenerate button.
+
+7. **Privacy quick-hide**
+
+* **Why:** Demo at coffee shop without showing balances.
+* **UI:** Toggle to blur numbers globally (context provider).
+
+8. **CSV import (bank exports)**
+
+* **Why:** Not all banks connect via Plaid.
+* **Flow:** Upload → map columns → dry-run preview → import.
+
+---
+
+# Differentiators (1–2 weeks each)
+
+9. **Cashflow forecasting (short-term)**
+
+* **Why:** “Will I go negative before payday?”
+* **Add:** `ForecastSnapshot { userId, horizonDays, createdAt, seriesJson }`.
+* **API:** `/api/forecast/cashflow?horizon=30`.
+* **AI:** Explain drivers (“gym, car insurance due next week”).
+
+10. **What-If simulator v2 (budget & investment)**
+
+* **Why:** Decision support.
+* **API:** `/api/ai/whatif` accepts knobs:
+
+  ```json
+  {
+    "budgetAdjustments": [{"category":"Dining","delta":-100}],
+    "recurringAdjustments": [{"name":"Gym","delta":-30}],
+    "investments": [{"symbol":"VOO","contribMonthly":200}],
+    "horizonMonths": 12
+  }
+  ```
+* **Return:** Projected savings, runway, portfolio expected value/variance.
+
+11. **Fraud/Anomaly alerts**
+
+* **Why:** Trust + retention.
+* **Logic:** Simple z-score or isolation forest on category spend; alert if >3σ.
+* **UI:** Alert center; “mark as expected”.
+
+12. **Goals with auto-transfer suggestions**
+
+* **Why:** Actionable guidance.
+* **Add:** `Goal { name, target, current, targetDate, bankAccountId? }`
+* **AI:** Recommend monthly transfer amount + timing.
+
+13. **Tax estimator (safe mode)**
+
+* **Why:** Pain point for 1099s/crypto.
+* **Add:** `TaxProfile { state, filingStatus, allowances }`
+* **API:** Compute **rough** federal/state estimates from categorized data.
+* **AI guardrails:** “Not tax advice.”
+
+14. **Investment rebalancing assistant**
+
+* **Why:** Portfolio hygiene.
+* **Add:** `TargetAllocation { assetClass, percent }`
+* **Output:** Trades to hit targets; cost/short-term gains warnings.
+
+15. **Benchmarks & cohorts (privacy-safe)**
+
+* **Why:** Social proof without social network.
+* **Add:** Derived, anonymized cohort stats (age band, state, risk).
+* **UI:** “You spend 8% less than peers on Dining.”
+
+16. **Merchant insights & receipt capture**
+
+* **Why:** Richer data + audit trail.
+* **Add:** `Receipt { txnId, fileUrl, ocrJson }`
+* **UI:** Upload image/PDF; show parsed line items.
+
+17. **Cashback/offer matcher**
+
+* **Why:** Tangible savings = stickiness.
+* **Flow:** Map categories/merchants to offers; suggest swaps (“use Card X at Store Y to save 5%”).
+
+18. **Voice commands (“Hey Gary…”)**
+
+* **Why:** Delight + accessibility.
+* **UI:** Mic button → speech-to-text → AI intent → query DB.
+
+19. **Offline mode (read-only)**
+
+* **Why:** Reliability.
+* **Add:** Cache last N days, reports, and charts in IndexedDB.
+
+20. **B2B “Family” / “Team” spaces**
+
+* **Why:** Expansion surface.
+* **Add:** `Workspace { id, name }`, `Membership { userId, role }`
+* **Use:** Household budgets, startup runway tracker.
+
+---
+
+# Implementation notes (wired to your stack)
+
+* **DB (Drizzle)**
+
+  * Create new tables listed above; add indexes on `userId`, dates.
+  * Migration naming: `2025XXXX_add_recurring_rules.sql` etc.
+
+* **Server**
+
+  * Add routes for: recurring rules, forecast, what-if, fraud alerts, reports save/list, csv import, receipts.
+  * Background jobs: use a minimal in-process scheduler or Redis/BullMQ if you’ve enabled it.
+  * Plan gating: `requirePlan('pro'|'premium')` on simulator, forecast, fraud, rebalancer.
+
+* **Client**
+
+  * New pages: **Forecast**, **Simulator**, **Alerts**, **Imports**.
+  * Reusable widgets: `NumberBlur`, `CohortBadge`, `AnomalyTag`.
+  * Charts: Recharts (keep axes/tooltip accessible).
+
+* **AI (Gary)**
+
+  * Tools/functions Gary can call:
+
+    * `getSpending(period, category?)`
+    * `createRecurringRule(rule)`
+    * `runForecast(horizonDays)`
+    * `simulateWhatIf(payload)`
+    * `rebalanceProposal(targets)`
+  * System prompt: clarify guardrails (no tax/legal/price hallucinations; cite app data).
+
+* **Security**
+
+  * Rate-limit AI/forecast endpoints.
+  * Validate all CSV imports server-side; MIME & size check.
+  * Encrypt PII fields; receipts scanned for secrets.
+
+* **Monetization ideas**
+
+  * Gate **Forecast** (Pro) and **Rebalancer/Fraud** (Premium).
+  * Offer **day-pass** for Premium features via Stripe PaymentLink for try-before-subscribe.
+
+---
+
+# Acceptance tests (copy into your issues)
+
+* **Recurring:** Create a monthly rule; nextRunAt advances on materialization; duplicates prevented.
+* **Forecast:** With seeded data, 30-day forecast returns series of daily balances; Gary explains top 3 drivers.
+* **What-If:** Changing Dining −\$100 shows new month-end balance > old; simulator returns diff table.
+* **Fraud:** Inject a 5× category spike; anomaly appears in Alerts; dismiss hides it, state persisted.
+* **CSV import:** Malformed file rejected; valid preview shows row mappings; importing adds txns and updates charts.
+* **Privacy mode:** Toggle instantly blurs all currency components across pages.
+
+---
+
+## Prioritization (if you want a roadmap)
+
+1. **Recurring + Rules + CSV import** (onboarding & retention)
+2. **Forecast + What-If** (wow factor; Pro)
+3. **Fraud alerts + Benchmarks** (trust & stickiness; Premium)
+4. **Rebalancer + Goals auto-transfer** (investor delight)
+5. **Receipts + Offers + Voice** (polish & growth)
+
+If you tell me which two you want **first**, I’ll sketch the DB schema, API route stubs, and React component contracts so you can paste them straight into your repo.

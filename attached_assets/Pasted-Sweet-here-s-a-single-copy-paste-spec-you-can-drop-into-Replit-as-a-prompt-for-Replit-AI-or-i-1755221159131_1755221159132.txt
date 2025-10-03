@@ -1,0 +1,329 @@
+Sweet — here’s a single **copy-paste spec** you can drop into Replit (as a prompt for Replit AI or into your project README) to generate your app. It compiles everything we discussed into one build brief.
+
+---
+
+# **Build Brief: AI Investmate (Finance & Investment AI App)**
+
+## Goal
+
+Ship an **App Store–ready** finance app with AI coaching, bank/investment tracking, budgets/goals, reports, and a unique portfolio analysis feature. Include secure auth with **Google OAuth + 2FA**, subscriptions, and a conversational **AI Money Coach**.
+
+## Tech Stack (free-friendly)
+
+* **Frontend:** React + TypeScript, Vite, TailwindCSS (dark emerald theme)
+* **Mobile:** React Native (Expo) or Capacitor wrapper for iOS/Android
+* **Backend:** Node.js (Express or NestJS)
+* **DB:** Postgres (Prisma ORM) or SQLite for dev
+* **Auth:** OAuth (Google) + TOTP 2FA (e.g., `otplib`)
+* **Payments/Subscriptions:** Stripe (test mode)
+* **Bank/Investments:** Plaid sandbox (mock in dev with seeders)
+* **AI:** OpenAI-compatible endpoint (abstract behind `LLM_PROVIDER_URL`), fallback to local rules if env missing
+* **Jobs/Events:** BullMQ + Redis (optional) or cron tasks
+* **Testing:** Vitest/Jest + Playwright
+* **CI (optional):** GitHub Actions
+
+## Environment Variables
+
+```
+DATABASE_URL=
+JWT_SECRET=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+OAUTH_CALLBACK_URL=
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+PLAID_CLIENT_ID=
+PLAID_SECRET=
+PLAID_ENV=sandbox
+LLM_PROVIDER_URL=
+LLM_API_KEY=
+```
+
+## Data Models (Prisma-style)
+
+```prisma
+model User {
+  id            String  @id @default(cuid())
+  email         String  @unique
+  name          String?
+  imageUrl      String?
+  provider      String  // 'google'
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  twoFAEnabled  Boolean  @default(false)
+  twoFASecret   String?  // encrypted
+  backupCodes   String[] // encrypted
+  subscription  Subscription?
+  profile       UserProfile?
+  accounts      BankAccount[]
+  investments   Investment[]
+  transactions  Transaction[]
+  budgets       Budget[]
+  goals         Goal[]
+  sessions      Session[]
+  devices       TrustedDevice[]
+}
+
+model Subscription {
+  id        String @id @default(cuid())
+  userId    String @unique
+  plan      String // 'free' | 'pro' | 'premium'
+  status    String // 'active' | 'canceled' | 'past_due'
+  stripeId  String?
+  renewsAt  DateTime?
+  createdAt DateTime @default(now())
+}
+
+model UserProfile {
+  id            String @id @default(cuid())
+  userId        String @unique
+  riskTolerance String? // 'low' | 'medium' | 'high'
+  currency      String  @default("USD")
+  goalsText     String? // freeform financial goals
+}
+
+model SecuritySettings {
+  id            String @id @default(cuid())
+  userId        String @unique
+  loginAlerts   Boolean @default(true)
+  trustedOnly   Boolean @default(false)
+}
+
+model BankAccount {
+  id           String @id @default(cuid())
+  userId       String
+  plaidItemId  String?
+  mask         String? // last 4
+  institution  String?
+  type         String  // 'checking' | 'savings' | 'credit' | 'loan'
+  name         String
+  balance      Decimal  @default(0)
+  autoSync     Boolean  @default(false)
+}
+
+model Investment {
+  id          String  @id @default(cuid())
+  userId      String
+  symbol      String
+  name        String?
+  quantity    Decimal @default(0)
+  costBasis   Decimal @default(0)
+  accountId   String?
+  type        String  // 'stock' | 'etf' | 'crypto' | 'mutual_fund'
+}
+
+model Transaction {
+  id           String  @id @default(cuid())
+  userId       String
+  accountId    String?
+  date         DateTime
+  amount       Decimal
+  category     String   // AI-categorized
+  merchant     String?
+  notes        String?
+  direction    String   // 'income' | 'expense' | 'transfer'
+}
+
+model Budget {
+  id         String @id @default(cuid())
+  userId     String
+  category   String
+  monthlyCap Decimal
+}
+
+model Goal {
+  id         String @id @default(cuid())
+  userId     String
+  name       String
+  target     Decimal
+  current    Decimal  @default(0)
+  targetDate DateTime?
+}
+
+model Report {
+  id        String @id @default(cuid())
+  userId    String
+  period    String // 'M2025-08', 'Q2025-Q3', 'Y2025'
+  summary   String // AI narrative
+  createdAt DateTime @default(now())
+}
+
+model Session {
+  id        String @id @default(cuid())
+  userId    String
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  revoked   Boolean  @default(false)
+}
+
+model TrustedDevice {
+  id        String @id @default(cuid())
+  userId    String
+  deviceId  String // hashed
+  label     String?
+  lastUsed  DateTime @default(now())
+}
+```
+
+## API Contract (REST)
+
+**Auth**
+
+* `POST /api/auth/google` → OAuth start
+* `GET /api/auth/callback` → OAuth callback
+* `POST /api/auth/2fa/setup` → returns TOTP secret + QR (provisioning URI)
+* `POST /api/auth/2fa/verify` → enable 2FA
+* `POST /api/auth/2fa/login` → verify TOTP on signin
+* `POST /api/auth/logout`
+
+**User & Security**
+
+* `GET /api/me`
+* `PUT /api/me/profile`
+* `GET /api/me/security`
+* `GET /api/me/sessions`
+* `POST /api/me/devices/trust`
+* `POST /api/me/devices/revoke`
+
+**Subscriptions (Stripe)**
+
+* `GET /api/billing/portal`
+* `POST /api/billing/checkout {plan}`
+* `POST /api/billing/webhook` (Stripe webhook)
+
+**Banking (Plaid Sandbox / Mock)**
+
+* `POST /api/banks/link` → start Plaid link
+* `POST /api/banks/exchange_public_token`
+* `GET /api/banks` → accounts
+* `POST /api/banks/sync` → pull balances/txns
+* Dev-only mock: `POST /api/banks/mock/seed`
+
+**Investments**
+
+* `GET /api/investments`
+* `POST /api/investments`
+* `PUT /api/investments/:id`
+* `DELETE /api/investments/:id`
+
+**Transactions/Budgets/Goals**
+
+* `GET /api/transactions?from&to&category`
+* `POST /api/transactions` (manual add)
+* `GET /api/budgets`
+* `POST /api/budgets`
+* `GET /api/goals`
+* `POST /api/goals`
+
+**Reports & AI**
+
+* `POST /api/reports/generate?period=month|quarter|year`
+* `GET /api/reports?period=...`
+* `POST /api/ai/chat` → `{message, contextFlags}` returns assistant message
+* `POST /api/ai/categorize` → categorize a transaction
+* `POST /api/ai/whatif` → scenario analysis `{ deltaInvestments, savingsChange }`
+
+## Frontend Pages & Components
+
+* **Layout:** sidebar + topbar; **dark emerald theme**, glassmorphism accents.
+* **Pages:** Dashboard, Transactions, Budgets, Goals, Investments, Reports, Pricing, Profile (Personal Info, Security, Notifications), Settings.
+* **Dashboard Widgets:** FinancialOverview, AIInsights, QuickStats, RecentActivity, SpendingChart, GoalProgress.
+* **Transactions:** TransactionForm, TransactionFilters, TransactionList.
+* **Investments:** Portfolio table + sparkline, risk/diversification cards.
+* **AI Chatbot (floating):** global; context-aware on current page.
+
+## Monetization (feature gating)
+
+* **Free:** core tracking, manual txns, basic chatbot, budgets/goals (basic), exports.
+* **Pro:** AI insights, auto-categorization, expense forecasting, advanced budgets/goals, monthly reports.
+* **Premium:** Portfolio analysis, what-if simulator, tax estimator, fraud alerts, quarterly/yearly AI reports, priority sync.
+
+Gate on frontend via `usePlan()` and backend middleware:
+
+* `requirePlan('pro')` / `requirePlan('premium')`
+
+## Unique/Sticky Features
+
+* **AI Money Coach modes:** mentor / tough-love / analytical (user-selectable persona).
+* **What-If Simulator:** “Invest +\$500 in AAPL monthly—projected 10y outcome & risk delta.”
+* **Expense Forecasting:** next-month spend prediction + alerts.
+* **Fraud Alert AI:** anomaly detection on spend patterns (premium).
+* **Anonymous Benchmarks:** compare to peers (age/risk/region) with privacy.
+* **Group Goals:** joint savings targets with friends/family.
+* **Privacy Mode:** blur balances with a tap; offline view of cached data.
+
+## Seed Data (dev)
+
+* 8 transactions (food/transport/entertainment/income)
+* 5 budgets (Food, Transport, Rent, Shopping, Utilities)
+* 3 goals (Emergency Fund, Vacation, New Laptop)
+* 4 mock bank accounts; 4 investments with prices fetched from a mock price service
+
+## AI Prompting (server)
+
+* System prompt should summarize user profile, plans, and page context.
+* Tooling: `categorizeTransaction`, `computeBudgetStatus`, `portfolioStats`, `forecastSpending`, `simulateScenario`.
+* Guardrails: never give tax/legal advice; suggest consulting a pro; avoid hallucinated prices—use DB or mock quote service.
+
+## Security
+
+* TOTP 2FA + backup codes
+* Encrypt secrets at rest (e.g., `libsodium`/AES-GCM)
+* Hash device IDs; list/revoke sessions
+* Role/plan checks on every premium endpoint
+* Input validation (Zod) + rate limits on auth/AI/chat
+
+## Styling Notes
+
+* Tailwind; dark base, emerald accents; premium typography
+* Motion: subtle fade/slide for cards; chart tooltips
+* Charts: Recharts (accessible), currency-aware formatting
+
+## App Store Readiness Checklist
+
+* Works offline for cached data
+* Onboarding: OAuth → 2FA → connect bank (Plaid sandbox) → seed demo data
+* Error states, empty states, skeleton loaders
+* Privacy Policy, Terms, Subscription terms
+* Export data (CSV) + delete account flow
+* App icons/screenshots; marketing copy
+
+## Dev Tasks (acceptance criteria)
+
+1. **Auth + 2FA**: login with Google, enable/verify TOTP, backup codes download.
+2. **Bank Link (sandbox)**: connect mock accounts, pull balances/txns, auto-categorize.
+3. **Investments**: CRUD + portfolio KPI cards (return, volatility estimate, allocation).
+4. **Budgets/Goals**: CRUD + progress meters + alerts.
+5. **Reports**: generate monthly AI narrative with concrete numbers from DB.
+6. **AI Chatbot**: answer “How much did I spend on food last month?”, “Build a \$200 travel budget”, “What if I add \$100/mo to VOO?”
+7. **Pricing**: Stripe test checkout; plan gating enforced server + client.
+8. **Exports/Notifications**: CSV export, email/push stubs hooked to settings.
+
+## Quick Scripts
+
+* `npm run dev` (concurrently run server/client)
+* `npm run db:migrate && npm run db:seed`
+* `npm run test` (unit + e2e)
+* `npm run build && npm run start`
+
+---
+
+### Bonus: minimal folder layout
+
+```
+/apps
+  /web   (React + Vite)
+  /api   (Node + Express/Nest + Prisma)
+/packages
+  /ui
+  /utils
+  /types
+```
+
+---
+
+**Instructions to Replit AI:**
+“Generate the full project using the spec above. Create Prisma schema, Express/Nest endpoints, React pages/components, Tailwind theme, AI routes with provider abstraction, Stripe test integration, Plaid sandbox mocks, and seed data. Ensure plan gating, 2FA flow, and dashboard charts work with seeded data. Provide a `README.md` with setup steps and App Store checklist.”
+
+If you want, I can also spin up **starter code snippets** (e.g., Prisma schema, Express route stubs, React layout) that you can paste directly.
