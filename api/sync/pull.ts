@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { db, hasDB } from "../db";
-import { transactions, budgets, goals } from "../db/schema";
+import { transactions, budgets, goals, profiles, aiLogs } from "../db/schema";
 import { eq } from "drizzle-orm";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -14,10 +14,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const [txns, bgs, gls] = await Promise.all([
+    const [txns, bgs, gls, profileRows, aiLogRows] = await Promise.all([
       db.select().from(transactions).where(eq(transactions.userId, userId)),
       db.select().from(budgets).where(eq(budgets.userId, userId)),
       db.select().from(goals).where(eq(goals.userId, userId)),
+      db.select().from(profiles).where(eq(profiles.userId, userId)),
+      db.select().from(aiLogs).where(eq(aiLogs.userId, userId)),
     ]);
     // cast numerics to numbers
     const num = (v:any)=> (typeof v === "string" ? Number(v) : v);
@@ -25,6 +27,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       txns: txns.map(t=>({ ...t, amount: num(t.amount) })),
       budgets: bgs.map(b=>({ ...b, limit: num(b.limit) })),
       goals: gls.map(g=>({ ...g, target: num(g.target), current: num(g.current) })),
+      profile: profileRows[0] || null,
+      aiLogs: aiLogRows.map(log => ({ ...log })),
     });
   } catch (e:any) {
     console.error(e);

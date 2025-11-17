@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { InfoPill } from "../components/InfoPill";
 
 function fv(monthly: number, rateAnnual: number, years: number) {
   const r = rateAnnual / 12;
@@ -58,6 +59,11 @@ export function SimulatorPage() {
         <div className="page-stack">
           <div className="card pad">
             <div className="title">What‑if simulator</div>
+            <div className="pill-row">
+              <InfoPill term="DCA" />
+              <InfoPill term="ETF" />
+              <InfoPill term="Emergency fund" />
+            </div>
             <div className="composer" style={{ flexWrap: "wrap" }}>
               <input className="input" placeholder="Monthly contribution" value={monthly} onChange={(e) => setMonthly(e.target.value)} />
               <input className="input" placeholder="Expected APY (%)" value={apy} onChange={(e) => setApy(e.target.value)} />

@@ -9,6 +9,7 @@ import { ProfilePage } from "../pages/profile";
 import { SimulatorPage } from "../pages/simulator";
 import AIChat from "../components/AIChat";
 import { StoreProvider } from "../state/store";
+import { OnboardingWizard } from "../components/OnboardingWizard";
 
 type Route = "dashboard" | "transactions" | "budgets" | "goals" | "reports" | "chat" | "sim" | "profile";
 
@@ -32,6 +33,7 @@ export default function App() {
   return (
     <StoreProvider>
       <div className="container">
+        <OnboardingWizard />
         <header className="header">
           <div className="brand">
             <div className="brand-badge">💹</div>

@@ -1,14 +1,18 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useStore } from "../state/store";
+import type { Concept } from "@shared/concepts";
+import { InfoPill } from "./InfoPill";
 
 type Message = { id: string; role: "user" | "assistant"; content: string };
-type Extras = { tags: string[]; riskLevel: "low" | "medium" | "high"; nextActions: string[] };
-type AIResponse = { reply: string; extras?: Extras };
+type Extras = { tags: string[]; riskLevel: "low" | "medium" | "high"; nextActions: string[]; concepts?: Concept[] };
+type AIResponse = { reply: string; extras?: Extras; insights?: { kpis?: { income: number; spend: number; savingsRate: number } } };
+type StructuredSections = { snapshot: string[]; insights: string[]; next: string[]; misc: string[] };
 
 const suggestions = [
-  "Build me a starter ETF allocation",
-  "How do I budget on $2k/mo?",
-  "What’s a good DCA plan for S&P 500?",
-  "Explain risk vs. reward like I'm 12"
+  "Make a budget for me. I make $2.8k/month, rent is $1200, I want to invest $400.",
+  "Explain why Dining blew up this month and what to trim.",
+  "Give me a DCA plan for ETFs that matches a balanced risk profile.",
+  "Summarize my subscriptions and which ones to cancel."
 ];
 
 function stripCodeFences(text: string): string {
@@ -48,13 +52,83 @@ function mdLite(text: string): JSX.Element {
   return <>{blocks}</>;
 }
 
+function parseStructuredReply(text: string): StructuredSections | null {
+  const lines = stripCodeFences(text)
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
+  if (!lines.length) return null;
+  const sections: StructuredSections = { snapshot: [], insights: [], next: [], misc: [] };
+  let current: keyof StructuredSections = "misc";
+  const setSection = (header: string) => {
+    const norm = header.toLowerCase();
+    if (norm.startsWith("snapshot")) current = "snapshot";
+    else if (norm.startsWith("insight")) current = "insights";
+    else if (norm.startsWith("next") || norm.startsWith("actions")) current = "next";
+    else current = "misc";
+  };
+  for (const line of lines) {
+    if (/^[A-Za-z\s]+:$/i.test(line)) {
+      setSection(line.replace(/:$/, ""));
+      continue;
+    }
+    if (/^(snapshot|insights?|next actions?|next steps)/i.test(line)) {
+      setSection(line);
+      continue;
+    }
+    if (line.startsWith("- ")) {
+      sections[current].push(line.slice(2));
+    } else {
+      sections[current].push(line);
+    }
+  }
+  if (sections.snapshot.length || sections.insights.length || sections.next.length) {
+    return sections;
+  }
+  return null;
+}
+
+function AssistantReply({ sections }: { sections: StructuredSections }) {
+  const blocks = [
+    { key: "Snapshot", rows: sections.snapshot },
+    { key: "Insights", rows: sections.insights },
+    { key: "Next", rows: sections.next },
+  ].filter(block => block.rows.length);
+  return (
+    <div className="assistant-summary">
+      {blocks.map(block => (
+        <div key={block.key} className="assistant-card">
+          <p className="assistant-card-label">{block.key}</p>
+          <ul>
+            {block.rows.map((row, index) => (
+              <li key={`${block.key}-${index}`}>{row}</li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      {sections.misc.length ? (
+        <div className="assistant-card muted">
+          {sections.misc.map((row, index) => (
+            <p key={`misc-${index}`}>{row}</p>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function AIChat() {
+  const { state, logChat } = useStore();
   const [messages, setMessages] = useState<Message[]>([
-    { id: crypto.randomUUID(), role: "assistant", content: "Hey! I’m InvestMate. Ask me about budgeting, ETFs, or planning." }
+    { id: crypto.randomUUID(), role: "assistant", content: "Hi! I'm your AI copilot. Ask me to explain a month, budget, or plan." }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [extras, setExtras] = useState<Extras | null>(null);
+  const [kpis, setKpis] = useState<{ income: number; spend: number; savingsRate: number } | null>(null);
+  const [status, setStatus] = useState("");
+  const currentMonth = useMemo(() => new Date().toISOString().slice(0, 7), []);
+  const [exportMonth, setExportMonth] = useState(() => currentMonth);
   const endRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
@@ -69,27 +143,70 @@ export default function AIChat() {
       const res = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: msg, context: window.localStorage.getItem("aimate_state_v1") || "{}" }),
+        body: JSON.stringify({
+          message: msg,
+          context: JSON.stringify({
+            txns: state.txns.slice(-60),
+            budgets: state.budgets,
+            goals: state.goals,
+            profile: state.profile,
+          }),
+        }),
       });
       const data: AIResponse = await res.json();
       setMessages(m => [...m, { id: crypto.randomUUID(), role: "assistant", content: data.reply }]);
       if (data.extras) setExtras(data.extras);
+      if (data.insights?.kpis) setKpis(data.insights.kpis);
+      if (data.reply) {
+        logChat({ question: msg, answer: data.reply });
+      }
+      setStatus("Answered • " + new Date().toLocaleTimeString());
     } catch (e) {
       setMessages(m => [...m, { id: crypto.randomUUID(), role: "assistant", content: "Sorry, I hit an error. Try again." }]);
+      setStatus("AI unavailable. Try again.");
     } finally {
       setLoading(false);
     }
+  }
+
+  const lastAssistant = useMemo(() => [...messages].reverse().find((m) => m.role === "assistant"), [messages]);
+  const logMonths = useMemo(() => Array.from(new Set((state.aiLogs || []).map((log) => log.month))).sort().reverse(), [state.aiLogs]);
+  const monthOptions = useMemo(() => {
+    const set = new Set(logMonths);
+    set.add(currentMonth);
+    return Array.from(set).sort().reverse();
+  }, [logMonths, currentMonth]);
+
+  function exportLogs() {
+    const month = exportMonth;
+    const rows = (state.aiLogs || []).filter((log) => log.month === month);
+    const blob = new Blob([JSON.stringify(rows, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `investmate-chat-${month}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function copyAnswer() {
+    if (!lastAssistant) return;
+    navigator.clipboard.writeText(stripCodeFences(lastAssistant.content));
+    setStatus("Copied latest answer");
   }
 
   return (
     <div className="chat-wrap">
       <div>
         <div className="messages">
-          {messages.map(m => (
-            <div key={m.id} className={"row " + (m.role === "user" ? "right" : "assistant left")}>
-              <div className="bubble">{mdLite(m.content)}</div>
-            </div>
-          ))}
+          {messages.map(m => {
+            const structured = m.role === "assistant" ? parseStructuredReply(m.content) : null;
+            return (
+              <div key={m.id} className={"row " + (m.role === "user" ? "right" : "assistant left")}>
+                <div className="bubble">{structured ? <AssistantReply sections={structured} /> : mdLite(m.content)}</div>
+              </div>
+            );
+          })}
           {loading && (
             <div className="row assistant left">
               <div className="bubble"><span className="typing">InvestMate is thinking…</span></div>
@@ -114,6 +231,7 @@ export default function AIChat() {
             <button key={s} className="chip" onClick={() => send(s)} disabled={loading}>{s}</button>
           ))}
         </div>
+        <div className="muted tiny" style={{marginTop:8}}>{status}</div>
       </div>
 
       <aside className="panel summary">
@@ -121,21 +239,58 @@ export default function AIChat() {
         {extras ? (
           <div>
             <div className="muted">Risk: <b style={{color:'#e5fbea'}}>{extras.riskLevel}</b></div>
+            {kpis && (
+              <div className="kpi-chip-row">
+                <span>Income ${kpis.income.toFixed(0)}</span>
+                <span>Spend ${kpis.spend.toFixed(0)}</span>
+                <span>Savings {kpis.savingsRate}%</span>
+              </div>
+            )}
             <div style={{marginTop:8}} className="muted">Tags:</div>
             <div style={{marginTop:6}}>
               {extras.tags?.map(t => <span key={t} className="tag">{t}</span>)}
             </div>
-            <div style={{marginTop:10}} className="muted">Next Actions:</div>
+            <div style={{marginTop:10}} className="muted">Next actions</div>
             <div style={{marginTop:6}}>
               {extras.nextActions?.map((a,i) => <div key={i} className="muted">• {a}</div>)}
+            </div>
+            {extras.concepts?.length ? (
+              <div style={{marginTop:12}}>
+                <div className="muted">Concepts mentioned</div>
+                <div className="concept-grid">
+                  {extras.concepts.map(concept => (
+                    <div key={concept.term} className="concept-pill">
+                      <strong>{concept.term}</strong>
+                      <p>{concept.short}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            <div style={{ marginTop: 16 }}>
+              <div className="muted tiny">Need a refresher?</div>
+              <div className="pill-row" style={{ marginTop: 6 }}>
+                {[
+                  "DCA",
+                  "ETF",
+                  "Expense ratio",
+                ].map(term => (
+                  <InfoPill key={term} term={term} />
+                ))}
+              </div>
             </div>
           </div>
         ) : (
           <div className="muted">Ask a question to see a personalized summary.</div>
         )}
-        <div style={{marginTop:14}}>
-          <button className="ghost">Export chat</button>
-          <button className="ghost" style={{marginLeft:8}}>Copy answer</button>
+        <div className="export-row">
+          <select className="input" value={exportMonth} onChange={(e)=>setExportMonth(e.target.value)}>
+            {monthOptions.map(month => (
+              <option key={month} value={month}>{month}</option>
+            ))}
+          </select>
+          <button className="ghost" onClick={exportLogs}>Export chat</button>
+          <button className="ghost" onClick={copyAnswer}>Copy answer</button>
         </div>
       </aside>
     </div>

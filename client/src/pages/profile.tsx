@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { useStore } from "../state/store";
 import { SyncPanel } from "../components/SyncPanel";
+import { AuthPanel } from "../components/AuthPanel";
+import { toCSV } from "../lib/utils";
 
 export function ProfilePage() {
-  const { exportAll } = useStore();
+  const { state, exportAll } = useStore();
   const [preferences, setPreferences] = useState({
     weeklyDigest: true,
     autopilot: false,
@@ -28,16 +30,51 @@ export function ProfilePage() {
     URL.revokeObjectURL(url);
   };
 
+  const exportBudgets = () => {
+    const csv = toCSV(state.budgets);
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "budgets.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportTransactions = () => {
+    const csv = toCSV(state.txns);
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "transactions.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportChatLogs = () => {
+    const blob = new Blob([JSON.stringify(state.aiLogs || [], null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "ai-chat-log.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <section style={{ marginTop: 12 }}>
       <div className="page-split">
         <div className="page-stack">
           <div className="card pad">
             <div className="title">Data export</div>
-            <p className="subtle">Own your data. Download everything as JSON anytime.</p>
-            <button className="btn" onClick={download} style={{ marginTop: 16 }}>
-              Download JSON
-            </button>
+            <p className="subtle">Own your data. Download everything anytime.</p>
+            <div className="export-grid">
+              <button className="btn" onClick={download}>Export full JSON</button>
+              <button className="ghost" onClick={exportTransactions}>Transactions CSV</button>
+              <button className="ghost" onClick={exportBudgets}>Budgets CSV</button>
+              <button className="ghost" onClick={exportChatLogs}>AI chat log</button>
+            </div>
           </div>
 
           <div className="card pad">
@@ -68,6 +105,31 @@ export function ProfilePage() {
 
         <div className="page-stack">
           <div className="card pad">
+            <div className="title">Profile</div>
+            {state.profile ? (
+              <ul className="list-clean">
+                <li>
+                  <strong>Income range</strong>
+                  <p className="muted tiny">{state.profile.incomeRange}</p>
+                </li>
+                <li>
+                  <strong>Primary goal</strong>
+                  <p className="muted tiny">{state.profile.goalFocus}</p>
+                </li>
+                <li>
+                  <strong>Risk comfort</strong>
+                  <p className="muted tiny">{state.profile.riskComfort}</p>
+                </li>
+                <li>
+                  <strong>Experience</strong>
+                  <p className="muted tiny">{state.profile.experience}</p>
+                </li>
+              </ul>
+            ) : (
+              <p className="muted">Complete onboarding to personalize your AI copilot.</p>
+            )}
+          </div>
+          <div className="card pad">
             <div className="title">Connected accounts</div>
             <div className="profile-grid">
               {connections.map((c) => (
@@ -84,6 +146,7 @@ export function ProfilePage() {
           <div className="card pad">
             <div className="title">Sync + security</div>
             <SyncPanel />
+            <AuthPanel />
           </div>
         </div>
       </div>
