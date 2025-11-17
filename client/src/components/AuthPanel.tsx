@@ -7,13 +7,11 @@ export function AuthPanel() {
   const [status, setStatus] = useState("");
 
   async function signIn() {
-    if (!supabase) { setStatus("Supabase not configured."); return; }
     const { error } = await supabase.auth.signInWithOtp({ email });
     setStatus(error ? error.message : "Magic link sent. Check your email.");
   }
 
   async function signOut() {
-    if (!supabase) { setStatus("Supabase not configured."); return; }
     await supabase.auth.signOut();
     setStatus("Signed out");
   }
