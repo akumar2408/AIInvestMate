@@ -3,16 +3,17 @@ import { createServer, type Server } from "http";
 import Stripe from "stripe";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { 
-  insertTransactionSchema, 
-  insertBudgetSchema, 
-  insertGoalSchema, 
+import {
+  insertTransactionSchema,
+  insertBudgetSchema,
+  insertGoalSchema,
   insertInvestmentSchema,
   insertReportSchema,
   insertCategorySchema,
   insertRecurringRuleSchema,
   insertCategoryRuleSchema
 } from "@shared/schema";
+import type { InsertCategoryRule } from "@shared/schema";
 import { z } from "zod";
 import { aiService } from "./services/openai";
 
@@ -20,9 +21,11 @@ if (!process.env.STRIPE_SECRET_KEY) {
   console.warn('STRIPE_SECRET_KEY not provided - subscription features will be disabled');
 }
 
-const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2023-10-16",
-}) : null;
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: "2025-07-30.basil" as Stripe.LatestApiVersion,
+    })
+  : null;
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -224,7 +227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!validatedData.category && validatedData.merchant) {
         const categorization = await aiService.categorizeTransaction(
           validatedData.merchant,
-          validatedData.amount,
+          Number(validatedData.amount),
           validatedData.direction
         );
         validatedData.category = categorization.category;
@@ -409,7 +412,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/ai/categorize', isAuthenticated, async (req: any, res) => {
     try {
       const { merchant, amount, direction } = req.body;
-      const categorization = await aiService.categorizeTransaction(merchant, amount, direction);
+      const categorization = await aiService.categorizeTransaction(
+        merchant,
+        Number(amount),
+        direction
+      );
       res.json(categorization);
     } catch (error) {
       console.error("Error categorizing transaction:", error);
@@ -538,7 +545,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertCategoryRuleSchema.parse({
         ...req.body,
         userId,
-      });
+      }) as InsertCategoryRule;
       const rule = await storage.createCategoryRule(validatedData);
       res.json(rule);
     } catch (error) {

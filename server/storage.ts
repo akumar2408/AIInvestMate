@@ -112,7 +112,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    const [user] = await db
+    const result = await db
       .insert(users)
       .values(userData)
       .onConflictDoUpdate({
@@ -123,7 +123,7 @@ export class DatabaseStorage implements IStorage {
         },
       })
       .returning();
-    return user;
+    return (Array.isArray(result) ? result[0] : (result as any).rows[0]) as User;
   }
 
   async updateUserStripeCustomerId(userId: string, customerId: string): Promise<void> {
@@ -172,7 +172,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUserProfile(data: InsertUserProfile): Promise<UserProfile> {
-    const [profile] = await db
+    const profileResult = await db
       .insert(userProfiles)
       .values(data)
       .onConflictDoUpdate({
@@ -180,7 +180,7 @@ export class DatabaseStorage implements IStorage {
         set: data,
       })
       .returning();
-    return profile;
+    return (Array.isArray(profileResult) ? profileResult[0] : (profileResult as any).rows[0]) as UserProfile;
   }
 
   // Bank account operations
@@ -193,11 +193,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBankAccount(data: InsertBankAccount): Promise<BankAccount> {
-    const [account] = await db
-      .insert(bankAccounts)
-      .values(data)
-      .returning();
-    return account;
+    const result = await db.insert(bankAccounts).values(data).returning();
+    return (Array.isArray(result) ? result[0] : (result as any).rows[0]) as BankAccount;
   }
 
   // Investment operations
@@ -210,47 +207,44 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createInvestment(data: InsertInvestment): Promise<Investment> {
-    const [investment] = await db
-      .insert(investments)
-      .values(data)
-      .returning();
-    return investment;
+    const result = await db.insert(investments).values(data).returning();
+    return (Array.isArray(result) ? result[0] : (result as any).rows[0]) as Investment;
   }
 
   // Transaction operations
   async getTransactions(userId: string, filters: { from?: string; to?: string; category?: string; limit?: number }): Promise<Transaction[]> {
-    let query = db
-      .select()
-      .from(transactions)
-      .where(eq(transactions.userId, userId));
+    const conditions = [eq(transactions.userId, userId)];
 
     if (filters.from) {
-      query = query.where(and(eq(transactions.userId, userId), gte(transactions.date, new Date(filters.from))));
+      conditions.push(gte(transactions.date, new Date(filters.from)));
     }
 
     if (filters.to) {
-      query = query.where(and(eq(transactions.userId, userId), lte(transactions.date, new Date(filters.to))));
+      conditions.push(lte(transactions.date, new Date(filters.to)));
     }
 
     if (filters.category) {
-      query = query.where(and(eq(transactions.userId, userId), eq(transactions.category, filters.category)));
+      conditions.push(eq(transactions.category, filters.category));
     }
 
-    query = query.orderBy(desc(transactions.date));
+    const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
+
+    const baseQuery = db
+      .select()
+      .from(transactions)
+      .where(whereClause)
+      .orderBy(desc(transactions.date));
 
     if (filters.limit) {
-      query = query.limit(filters.limit);
+      return await baseQuery.limit(filters.limit);
     }
 
-    return await query;
+    return await baseQuery;
   }
 
   async createTransaction(data: InsertTransaction): Promise<Transaction> {
-    const [transaction] = await db
-      .insert(transactions)
-      .values(data)
-      .returning();
-    return transaction;
+    const result = await db.insert(transactions).values(data).returning();
+    return (Array.isArray(result) ? result[0] : (result as any).rows[0]) as Transaction;
   }
 
   // Budget operations
@@ -263,11 +257,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBudget(data: InsertBudget): Promise<Budget> {
-    const [budget] = await db
-      .insert(budgets)
-      .values(data)
-      .returning();
-    return budget;
+    const result = await db.insert(budgets).values(data).returning();
+    return (Array.isArray(result) ? result[0] : (result as any).rows[0]) as Budget;
   }
 
   // Goal operations
@@ -280,60 +271,63 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createGoal(data: InsertGoal): Promise<Goal> {
-    const [goal] = await db
-      .insert(goals)
-      .values(data)
-      .returning();
-    return goal;
+    const result = await db.insert(goals).values(data).returning();
+    return (Array.isArray(result) ? result[0] : (result as any).rows[0]) as Goal;
   }
 
   // Report operations
   async getReports(userId: string, period?: string): Promise<Report[]> {
-    let query = db
-      .select()
-      .from(reports)
-      .where(eq(reports.userId, userId));
+    const conditions = [eq(reports.userId, userId)];
 
     if (period) {
-      query = query.where(and(eq(reports.userId, userId), eq(reports.period, period)));
+      conditions.push(eq(reports.period, period));
     }
 
-    return await query.orderBy(desc(reports.createdAt));
+    const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
+
+    return await db
+      .select()
+      .from(reports)
+      .where(whereClause)
+      .orderBy(desc(reports.createdAt));
   }
 
   async createReport(data: InsertReport): Promise<Report> {
-    const [report] = await db
-      .insert(reports)
-      .values(data)
-      .returning();
-    return report;
+    const result = await db.insert(reports).values(data).returning();
+    return (Array.isArray(result) ? result[0] : (result as any).rows[0]) as Report;
   }
 
   // Dashboard operations
   async getDashboardSummary(userId: string): Promise<any> {
     // Get account balances
     const accounts = await this.getBankAccounts(userId);
-    const totalBalance = accounts.reduce((sum, account) => sum + parseFloat(account.balance), 0);
+    const totalBalance = accounts.reduce((sum, account) => sum + Number(account.balance ?? 0), 0);
 
     // Get current month transactions
     const currentMonth = new Date().toISOString().slice(0, 7);
     const monthlyTransactions = await this.getTransactions(userId, { from: `${currentMonth}-01` });
     
     const monthlySpending = monthlyTransactions
-      .filter(t => t.direction === 'expense')
-      .reduce((sum, t) => sum + Math.abs(parseFloat(t.amount)), 0);
+      .filter((t) => t.direction === "expense")
+      .reduce((sum, t) => sum + Math.abs(Number(t.amount ?? 0)), 0);
 
     // Get investments
     const investments = await this.getInvestments(userId);
     const investmentValue = investments.reduce((sum, inv) => {
-      return sum + (parseFloat(inv.quantity) * parseFloat(inv.costBasis));
+      return sum + Number(inv.quantity ?? 0) * Number(inv.costBasis ?? 0);
     }, 0);
 
     // Get goals progress
     const goals = await this.getGoals(userId);
-    const completedGoals = goals.filter(goal => parseFloat(goal.current) >= parseFloat(goal.target));
-    const savingsProgress = goals.length > 0 
-      ? goals.reduce((sum, goal) => sum + Math.min(parseFloat(goal.current) / parseFloat(goal.target), 1), 0) / goals.length * 100 
+    const completedGoals = goals.filter((goal) => Number(goal.current ?? 0) >= Number(goal.target ?? 0));
+    const savingsProgress = goals.length > 0
+      ?
+          (goals.reduce(
+            (sum, goal) => sum + Math.min(Number(goal.current ?? 0) / Math.max(Number(goal.target ?? 0), 1), 1),
+            0,
+          ) /
+            goals.length) *
+          100
       : 0;
 
     return {
@@ -603,7 +597,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Create default category rules
-    const defaultCategoryRules = [
+    const defaultCategoryRules: InsertCategoryRule[] = [
       {
         userId,
         merchantRegex: "starbucks|coffee|cafe",
@@ -651,11 +645,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCategory(data: InsertCategory): Promise<Category> {
-    const [category] = await db
-      .insert(categories)
-      .values(data)
-      .returning();
-    return category;
+    const result = await db.insert(categories).values(data).returning();
+    return (Array.isArray(result) ? result[0] : (result as any).rows[0]) as Category;
   }
 
   // Recurring rule operations
@@ -668,20 +659,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createRecurringRule(data: InsertRecurringRule): Promise<RecurringRule> {
-    const [rule] = await db
-      .insert(recurringRules)
-      .values(data)
-      .returning();
-    return rule;
+    const result = await db.insert(recurringRules).values(data).returning();
+    return (Array.isArray(result) ? result[0] : (result as any).rows[0]) as RecurringRule;
   }
 
   async updateRecurringRule(id: string, data: Partial<InsertRecurringRule>): Promise<RecurringRule> {
-    const [rule] = await db
+    const result = await db
       .update(recurringRules)
       .set(data)
       .where(eq(recurringRules.id, id))
       .returning();
-    return rule;
+    return (Array.isArray(result) ? result[0] : (result as any).rows[0]) as RecurringRule;
   }
 
   async deleteRecurringRule(id: string): Promise<void> {
@@ -700,11 +688,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCategoryRule(data: InsertCategoryRule): Promise<CategoryRule> {
-    const [rule] = await db
-      .insert(categoryRules)
-      .values(data)
-      .returning();
-    return rule;
+    const result = await db.insert(categoryRules).values(data).returning();
+    return (Array.isArray(result) ? result[0] : (result as any).rows[0]) as CategoryRule;
   }
 
   async deleteCategoryRule(id: string): Promise<void> {

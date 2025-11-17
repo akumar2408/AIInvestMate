@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useStockQuote } from "@/hooks/useStockData";
+import { StockSparkline } from "@/components/charts/Sparkline";
+import { useStockQuote, useStockHistory } from "@/hooks/useStockData";
 
 const TRACKED_SYMBOLS = ["SPY", "QQQ", "VOO"];
 
@@ -32,8 +33,11 @@ type TickerCardProps = {
 
 function TickerCard({ symbol }: TickerCardProps) {
   const { data, loading, error } = useStockQuote(symbol, { refreshMs: 60_000 });
+  const { data: history } = useStockHistory(symbol, { range: "1m", refreshMs: 5 * 60_000 });
   const change = data?.change ?? 0;
-  const trendPositive = change >= 0;
+  const historyPoints = history?.points ?? [];
+  const historyTrend = historyPoints.length >= 2 ? historyPoints[historyPoints.length - 1].close - historyPoints[0].close : null;
+  const trendPositive = historyTrend != null ? historyTrend >= 0 : change >= 0;
 
   return (
     <div className="rounded-lg border border-slate-700/60 bg-slate-900/30 p-4">
@@ -42,8 +46,21 @@ function TickerCard({ symbol }: TickerCardProps) {
         {data ? currency.format(data.current) : loading ? "…" : "—"}
       </p>
       <p className={`text-sm ${trendPositive ? "text-emerald-400" : "text-red-400"}`}>
-        {data ? `${trendPositive ? "+" : ""}${change.toFixed(2)} (${data.changePct >= 0 ? "+" : ""}${data.changePct.toFixed(2)}%)` : error ? "Unavailable" : "Awaiting data"}
+        {data
+          ? `${trendPositive ? "+" : ""}${change.toFixed(2)} (${data.changePct >= 0 ? "+" : ""}${data.changePct.toFixed(2)}%)`
+          : error
+          ? "Unavailable"
+          : "Awaiting data"}
       </p>
+      <div className="mt-3">
+        <StockSparkline points={historyPoints} trendPositive={trendPositive} height={40} />
+        {historyTrend != null && (
+          <p className="text-xs text-slate-400 mt-1">
+            1m trend {historyTrend >= 0 ? "+" : ""}
+            {historyTrend.toFixed(2)}
+          </p>
+        )}
+      </div>
       {error && <p className="text-xs text-amber-400 mt-1">{error}</p>}
     </div>
   );

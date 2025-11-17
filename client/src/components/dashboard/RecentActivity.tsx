@@ -1,19 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  ShoppingCart, 
-  Building, 
-  Car, 
-  Film, 
+import {
+  ShoppingCart,
+  Building,
+  Car,
+  Film,
   Coffee,
   ArrowUpRight,
   Plus,
-  Minus
+  Minus,
 } from "lucide-react";
+import type { Transaction } from "@shared/schema";
 
 export default function RecentActivity() {
-  const { data: transactions, isLoading } = useQuery({
+  const { data: transactions = [], isLoading } = useQuery<Transaction[]>({
     queryKey: ["/api/transactions"],
   });
 
@@ -92,7 +93,7 @@ export default function RecentActivity() {
     return direction === 'income' ? `+$${formatted}` : `-$${formatted}`;
   };
 
-  const recentTransactions = transactions?.slice(0, 5) || [];
+  const recentTransactions = transactions.slice(0, 5);
 
   return (
     <Card className="bg-slate-800/40 backdrop-blur-sm border-slate-700/50">

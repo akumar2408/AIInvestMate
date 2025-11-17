@@ -3,11 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useState } from "react";
+import type { Transaction } from "@shared/schema";
 
 export default function SpendingChart() {
   const [timeRange, setTimeRange] = useState("6months");
   
-  const { data: transactions, isLoading } = useQuery({
+  const { data: transactions = [], isLoading } = useQuery<Transaction[]>({
     queryKey: ["/api/transactions"],
   });
 
@@ -28,7 +29,7 @@ export default function SpendingChart() {
 
   // Process transactions into monthly spending data
   const processTransactionData = () => {
-    if (!transactions || transactions.length === 0) {
+    if (!transactions.length) {
       // Generate synthetic data for visualization
       return [
         { month: 'Jul', spending: 3200 },
@@ -43,11 +44,11 @@ export default function SpendingChart() {
     const monthlyData: { [key: string]: number } = {};
     
     transactions
-      .filter((t: any) => t.direction === 'expense')
-      .forEach((transaction: any) => {
+      .filter((t) => t.direction === "expense")
+      .forEach((transaction) => {
         const date = new Date(transaction.date);
         const monthKey = date.toLocaleDateString('en-US', { month: 'short' });
-        const amount = Math.abs(parseFloat(transaction.amount));
+        const amount = Math.abs(Number(transaction.amount ?? 0));
         
         monthlyData[monthKey] = (monthlyData[monthKey] || 0) + amount;
       });

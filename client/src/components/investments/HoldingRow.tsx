@@ -1,17 +1,9 @@
 import { Badge } from "@/components/ui/badge";
 import { Quote, useStockQuote } from "@/hooks/useStockData";
 import { TrendingDown, TrendingUp } from "lucide-react";
+import type { Investment } from "@shared/schema";
 
 const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
-
-type Investment = {
-  id: string | number;
-  symbol: string;
-  type: string;
-  quantity: string;
-  costBasis: string;
-  name?: string | null;
-};
 
 type HoldingRowProps = {
   investment: Investment;
@@ -29,8 +21,8 @@ const lastUpdated = (quote: Quote | null) => {
 export function HoldingRow({ investment, badgeClass }: HoldingRowProps) {
   const { data: quote, loading, error } = useStockQuote(investment.symbol || null, { refreshMs: 60_000 });
 
-  const quantity = Number(investment.quantity || 0);
-  const fallbackPrice = Number(investment.costBasis || 0);
+  const quantity = Number(investment.quantity ?? 0);
+  const fallbackPrice = Number(investment.costBasis ?? 0);
   const price = quote?.current ?? fallbackPrice;
   const currentValue = quantity * price;
   const change = quote?.change ?? 0;

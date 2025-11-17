@@ -1,8 +1,8 @@
-import { sql } from 'drizzle-orm';
-import { relations } from 'drizzle-orm';
+import { relations, sql } from "drizzle-orm";
 import {
   boolean,
   decimal,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -132,14 +132,24 @@ export const reports = pgTable("reports", {
 });
 
 // Categories and subcategories
-export const categories = pgTable("categories", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name").notNull(),
-  parentId: varchar("parent_id").references(() => categories.id),
-  color: varchar("color"), // For UI display
-  icon: varchar("icon"), // Lucide icon name
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export const categories = pgTable(
+  "categories",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    name: varchar("name").notNull(),
+    parentId: varchar("parent_id"),
+    color: varchar("color"), // For UI display
+    icon: varchar("icon"), // Lucide icon name
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => ({
+    parentFk: foreignKey({
+      columns: [table.parentId],
+      foreignColumns: [table.id],
+      name: "categories_parent_fk",
+    }).onDelete("set null"),
+  })
+);
 
 // Recurring transaction rules
 export const recurringRules = pgTable("recurring_rules", {
@@ -359,7 +369,7 @@ export const insertCategoryRuleSchema = createInsertSchema(categoryRules).omit({
 });
 
 // Types
-export type UpsertUser = z.infer<typeof insertUserSchema>;
+export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type Subscription = typeof subscriptions.$inferSelect;
 export type UserProfile = typeof userProfiles.$inferSelect;
@@ -372,20 +382,20 @@ export type Goal = typeof goals.$inferSelect;
 export type Report = typeof reports.$inferSelect;
 export type TrustedDevice = typeof trustedDevices.$inferSelect;
 
-export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
-export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
-export type InsertBankAccount = z.infer<typeof insertBankAccountSchema>;
-export type InsertInvestment = z.infer<typeof insertInvestmentSchema>;
-export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
-export type InsertBudget = z.infer<typeof insertBudgetSchema>;
-export type InsertGoal = z.infer<typeof insertGoalSchema>;
-export type InsertReport = z.infer<typeof insertReportSchema>;
+export type InsertSubscription = typeof subscriptions.$inferInsert;
+export type InsertUserProfile = typeof userProfiles.$inferInsert;
+export type InsertBankAccount = typeof bankAccounts.$inferInsert;
+export type InsertInvestment = typeof investments.$inferInsert;
+export type InsertTransaction = typeof transactions.$inferInsert;
+export type InsertBudget = typeof budgets.$inferInsert;
+export type InsertGoal = typeof goals.$inferInsert;
+export type InsertReport = typeof reports.$inferInsert;
 
 export type Category = typeof categories.$inferSelect;
-export type InsertCategory = z.infer<typeof insertCategorySchema>;
+export type InsertCategory = typeof categories.$inferInsert;
 
 export type RecurringRule = typeof recurringRules.$inferSelect;
-export type InsertRecurringRule = z.infer<typeof insertRecurringRuleSchema>;
+export type InsertRecurringRule = typeof recurringRules.$inferInsert;
 
 export type CategoryRule = typeof categoryRules.$inferSelect;
-export type InsertCategoryRule = z.infer<typeof insertCategoryRuleSchema>;
+export type InsertCategoryRule = typeof categoryRules.$inferInsert;

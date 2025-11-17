@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { CandleRange, StockHistoryPayload } from "@shared/finnhub";
 
 export type Quote = {
   symbol: string;
@@ -23,6 +24,8 @@ export type ETFProfile = {
   };
   holdings: { symbol: string; description: string; weight: number }[];
 };
+
+export type CandlePoint = StockHistoryPayload["points"][number];
 
 export function useStockQuote(symbol: string | null, opts?: { refreshMs?: number }) {
   const [data, setData] = useState<Quote | null>(null);
@@ -97,6 +100,53 @@ export function useETFOverview(symbol: string | null) {
       cancelled = true;
     };
   }, [symbol]);
+
+  return { data, loading, error };
+}
+
+export function useStockHistory(
+  symbol: string | null,
+  opts?: { range?: CandleRange; resolution?: string; refreshMs?: number }
+) {
+  const [data, setData] = useState<StockHistoryPayload | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!symbol) return;
+
+    let cancelled = false;
+    let timer: number | undefined;
+
+    const fetchHistory = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const params = new URLSearchParams({ symbol });
+        if (opts?.range) params.set("range", opts.range);
+        if (opts?.resolution) params.set("resolution", opts.resolution);
+        const resp = await fetch(`/api/stocks/history?${params.toString()}`);
+        const json = await resp.json();
+        if (!resp.ok) throw new Error(json.error || "Failed to load history");
+        if (!cancelled) setData(json);
+      } catch (e: any) {
+        if (!cancelled) setError(e?.message || "Error loading history");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchHistory();
+
+    if (opts?.refreshMs && opts.refreshMs > 0) {
+      timer = window.setInterval(fetchHistory, opts.refreshMs);
+    }
+
+    return () => {
+      cancelled = true;
+      if (timer) window.clearInterval(timer);
+    };
+  }, [symbol, opts?.range, opts?.resolution, opts?.refreshMs]);
 
   return { data, loading, error };
 }
