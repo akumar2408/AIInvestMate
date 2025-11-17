@@ -97,6 +97,7 @@ section + section { margin-top: 28px; }
   background: radial-gradient(circle at top right, rgba(52, 211, 153, 0.14), transparent 55%);
   opacity: 0;
   transition: opacity 0.35s ease;
+  pointer-events: none;  /* <- added */
 }
 .card:hover::before { opacity: 1; }
 .card.pad { padding: 26px; }
@@ -178,7 +179,14 @@ section + section { margin-top: 28px; }
 
 .callout { border-radius:18px; padding:18px; border:1px dashed rgba(110,231,183,.6); background: rgba(15,118,110,.1); }
 
-.glimmer { position:absolute; inset:0; background: radial-gradient(circle at top, rgba(255,255,255,.08), transparent 45%); opacity:0; transition: opacity .3s ease; }
+.glimmer {
+  position:absolute;
+  inset:0;
+  background: radial-gradient(circle at top, rgba(255,255,255,.08), transparent 45%);
+  opacity:0;
+  transition: opacity .3s ease;
+  pointer-events: none;  /* <- added */
+}
 .card:hover .glimmer { opacity:.6; }
 
 .chips-inline { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
@@ -255,8 +263,25 @@ section + section { margin-top: 28px; }
 .pulse-card:hover { transform: translateY(-3px); border-color: rgba(110,231,183,.6); }
 
 .overview-panel { display:flex; flex-direction:column; gap: 20px; }
-.glow-card { display:flex; justify-content:space-between; align-items:center; padding: 18px; border-radius: 18px; background: radial-gradient(circle at top, rgba(14,165,233,.3), rgba(6,182,212,.08)); border: 1px solid rgba(125,211,252,.3); position: relative; overflow:hidden; }
-.glow-card::after { content:""; position:absolute; inset:0; background: radial-gradient(circle at 20% 0%, rgba(255,255,255,.15), transparent 50%); opacity:.6; }
+.glow-card {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding: 18px;
+  border-radius: 18px;
+  background: radial-gradient(circle at top, rgba(14,165,233,.3), rgba(6,182,212,.08));
+  border: 1px solid rgba(125,211,252,.3);
+  position: relative;
+  overflow:hidden;
+}
+.glow-card::after {
+  content:"";
+  position:absolute;
+  inset:0;
+  background: radial-gradient(circle at 20% 0%, rgba(255,255,255,.15), transparent 50%);
+  opacity:.6;
+  pointer-events: none;  /* <- added */
+}
 .glow-card h3 { margin: 6px 0 0; font-size: 2rem; }
 .sparkline { width: 120px; height: 60px; background: linear-gradient(180deg, rgba(110,231,183,.3), transparent); border-radius: 16px; mask: radial-gradient(circle at 50% 50%, #000 60%, transparent 72%); }
 .agenda { display:flex; flex-direction:column; gap:12px; }
@@ -332,3 +357,4 @@ section + section { margin-top: 28px; }
   .hero-actions { flex-direction: column; }
   .pulse-grid { grid-template-columns: repeat(auto-fit,minmax(120px,1fr)); }
 }
+
