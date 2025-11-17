@@ -1,5 +1,7 @@
 // shared/finnhub.ts
 
+// ---------- Raw API types ----------
+
 export type FinnhubQuoteResponse = {
   c: number; // current
   d: number; // change
@@ -13,7 +15,11 @@ export type FinnhubQuoteResponse = {
 
 type FinnhubCandleResponse = {
   c?: number[]; // close prices
+  h?: number[];
+  l?: number[];
+  o?: number[];
   t?: number[]; // timestamps (unix)
+  v?: number[];
   s: "ok" | "no_data" | string;
 };
 
@@ -34,6 +40,8 @@ type FinnhubETFHoldingsResponse = {
   }[];
 };
 
+// ---------- App-level types ----------
+
 export type QuotePayload = {
   symbol: string;
   current: number;
@@ -46,6 +54,7 @@ export type QuotePayload = {
   timestamp: number | null;
 };
 
+// simple history used by the sparkline / history API
 export type HistoryPoint = {
   t: number; // ms timestamp
   c: number; // close price
@@ -55,6 +64,25 @@ export type HistoryPayload = {
   symbol: string;
   range: string;
   points: HistoryPoint[];
+};
+
+// richer candle history (kept because some code may already use it)
+export type CandlePoint = {
+  time: number; // ms timestamp
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+};
+
+export type CandleRange = "1d" | "1w" | "1m" | "3m" | "1y";
+
+export type StockHistoryPayload = {
+  symbol: string;
+  range: CandleRange;
+  resolution: string;
+  points: CandlePoint[];
 };
 
 export type ETFOverview = {
@@ -69,6 +97,8 @@ export type ETFOverview = {
   holdings: { symbol: string; description: string; weight: number }[];
 };
 
+// ---------- Error + constants ----------
+
 export class FinnhubError extends Error {
   statusCode: number;
 
@@ -81,6 +111,16 @@ export class FinnhubError extends Error {
 
 const FINNHUB_BASE_URL = "https://finnhub.io/api/v1";
 
+const HISTORY_WINDOWS: Record<CandleRange, { seconds: number; resolution: string }> = {
+  "1d": { seconds: 60 * 60 * 24,       resolution: "5"  },
+  "1w": { seconds: 60 * 60 * 24 * 7,   resolution: "30" },
+  "1m": { seconds: 60 * 60 * 24 * 30,  resolution: "60" },
+  "3m": { seconds: 60 * 60 * 24 * 90,  resolution: "D"  },
+  "1y": { seconds: 60 * 60 * 24 * 365, resolution: "D"  },
+};
+
+// ---------- helpers ----------
+
 const normalizeSymbol = (symbolRaw: string | null | undefined) =>
   String(symbolRaw || "").toUpperCase().trim();
 
@@ -92,7 +132,15 @@ const resolveApiKey = (override?: string | null) => {
   return key;
 };
 
-// -------- Quote --------
+const resolveHistoryWindow = (range?: CandleRange) => {
+  if (range && HISTORY_WINDOWS[range]) {
+    return { range, ...HISTORY_WINDOWS[range] };
+  }
+  // default to 1w
+  return { range: "1w" as CandleRange, ...HISTORY_WINDOWS["1w"] };
+};
+
+// ---------- Quote ----------
 
 export async function fetchFinnhubQuote(
   symbolRaw: string,
@@ -104,11 +152,9 @@ export async function fetchFinnhubQuote(
   }
 
   const key = resolveApiKey(apiKey);
-  const url = `${FINNHUB_BASE_URL}/quote?symbol=${encodeURIComponent(
-    symbol
-  )}&token=${key}`;
-
+  const url = `${FINNHUB_BASE_URL}/quote?symbol=${encodeURIComponent(symbol)}&token=${key}`;
   const resp = await fetch(url);
+
   if (!resp.ok) {
     const text = await resp.text();
     console.error("Finnhub quote error", resp.status, text);
@@ -133,7 +179,7 @@ export async function fetchFinnhubQuote(
   };
 }
 
-// -------- History (for the little sparkline) --------
+// ---------- Simple history (for /api/stocks/history) ----------
 
 function rangeToWindow(range: string): { from: number; to: number; resolution: string } {
   const now = Math.floor(Date.now() / 1000);
@@ -141,13 +187,15 @@ function rangeToWindow(range: string): { from: number; to: number; resolution: s
 
   switch (range) {
     case "1w":
-      return { from: now - 7 * day, to: now, resolution: "30" }; // 30-min candles
+      return { from: now - 7 * day, to: now, resolution: "30" };
     case "1m":
-      return { from: now - 30 * day, to: now, resolution: "D" }; // daily
+      return { from: now - 30 * day, to: now, resolution: "D" };
     case "3m":
       return { from: now - 90 * day, to: now, resolution: "D" };
     case "1y":
-      return { from: now - 365 * day, to: now, resolution: "W" }; // weekly
+      return { from: now - 365 * day, to: now, resolution: "W" };
+    case "1d":
+      return { from: now - 1 * day, to: now, resolution: "5" };
     default:
       return { from: now - 30 * day, to: now, resolution: "D" };
   }
@@ -166,9 +214,9 @@ export async function fetchFinnhubHistory(
   const { from, to, resolution } = rangeToWindow(range);
   const key = resolveApiKey(apiKey);
 
-  const url = `${FINNHUB_BASE_URL}/stock/candle?symbol=${encodeURIComponent(
-    symbol
-  )}&resolution=${resolution}&from=${from}&to=${to}&token=${key}`;
+  const url =
+    `${FINNHUB_BASE_URL}/stock/candle?symbol=${encodeURIComponent(symbol)}` +
+    `&resolution=${resolution}&from=${from}&to=${to}&token=${key}`;
 
   const resp = await fetch(url);
   if (!resp.ok) {
@@ -190,7 +238,58 @@ export async function fetchFinnhubHistory(
   return { symbol, range, points };
 }
 
-// -------- ETF Detail (optional, but already wired) --------
+// ---------- Rich candle history (used by server/app.ts via fetchFinnhubCandles) ----------
+
+export async function fetchFinnhubCandles(
+  symbolRaw: string,
+  opts?: { range?: CandleRange; resolution?: string; from?: number; to?: number },
+  apiKey?: string | null
+): Promise<StockHistoryPayload> {
+  const symbol = normalizeSymbol(symbolRaw);
+  if (!symbol) {
+    throw new FinnhubError("symbol query param required, e.g. ?symbol=SPY", 400);
+  }
+
+  const window = resolveHistoryWindow(opts?.range);
+  const resolution = opts?.resolution || window.resolution;
+  const to = opts?.to ?? Math.floor(Date.now() / 1000);
+  const from = opts?.from ?? to - window.seconds;
+
+  const key = resolveApiKey(apiKey);
+  const url =
+    `${FINNHUB_BASE_URL}/stock/candle?symbol=${encodeURIComponent(symbol)}` +
+    `&resolution=${resolution}&from=${from}&to=${to}&token=${key}`;
+
+  const resp = await fetch(url);
+  if (!resp.ok) {
+    const text = await resp.text();
+    console.error("Finnhub history error", resp.status, text);
+    throw new FinnhubError("Failed to fetch history", 502);
+  }
+
+  const raw = (await resp.json()) as FinnhubCandleResponse;
+  if (!raw || raw.s !== "ok" || !raw.t || !raw.t.length) {
+    throw new FinnhubError("No historical data for symbol", 404);
+  }
+
+  const points: CandlePoint[] = raw.t.map((time, idx) => ({
+    time: time * 1000,
+    open: raw.o?.[idx] ?? 0,
+    high: raw.h?.[idx] ?? 0,
+    low: raw.l?.[idx] ?? 0,
+    close: raw.c?.[idx] ?? 0,
+    volume: raw.v?.[idx] ?? 0,
+  }));
+
+  return {
+    symbol,
+    range: window.range,
+    resolution,
+    points,
+  };
+}
+
+// ---------- ETF detail ----------
 
 export async function fetchFinnhubETF(
   symbolRaw: string,
@@ -249,4 +348,5 @@ export async function fetchFinnhubETF(
     holdings,
   };
 }
+
 
