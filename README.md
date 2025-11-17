@@ -36,6 +36,9 @@ VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 > Keep the anon key scoped to client-side access only. For service-role keys use server-side code.
 
+If you forget to set the variables locally, the Supabase client falls back to the values in `.env.example` so the UI still boots
+for demos—but you should always override them with your own project credentials.
+
 If you deploy to Vercel, add the same two variables (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) in the project settings so builds receive them.
 
 ### 4. Run the stack
