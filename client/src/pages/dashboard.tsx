@@ -1,5 +1,9 @@
 import React, { useMemo } from "react";
 import { useStore, monthKey, detectAnomalies } from "../state/store";
+import { useStockQuote } from "../hooks/useStockData";
+
+const MARKET_SYMBOLS = ["SPY", "QQQ", "VOO"];
+const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
 export function Dashboard() {
   const { state } = useStore();
@@ -138,6 +142,7 @@ export function Dashboard() {
         </div>
 
         <div className="page-stack">
+          <MarketPulseStrip symbols={MARKET_SYMBOLS} />
           <div className="card pad">
             <div className="title">Live feed</div>
             <ul className="feed">
@@ -210,4 +215,68 @@ function Kpi({ label, value, trend }: { label: string; value: string; trend: str
       <div className="trend">{trend}</div>
     </div>
   );
+}
+
+type MarketPulseStripProps = {
+  symbols?: string[];
+};
+
+function MarketPulseStrip({ symbols = MARKET_SYMBOLS }: MarketPulseStripProps) {
+  return (
+    <div className="card pad">
+      <div className="title">
+        Market pulse
+        <span className="muted tiny">Realtime data via Finnhub</span>
+      </div>
+      <div className="market-grid">
+        {symbols.map((symbol) => (
+          <MarketTicker key={symbol} symbol={symbol} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+type MarketTickerProps = {
+  symbol: string;
+};
+
+function MarketTicker({ symbol }: MarketTickerProps) {
+  const { data, loading, error } = useStockQuote(symbol, { refreshMs: 60_000 });
+  const change = data?.change ?? 0;
+  const changePct = data?.changePct ?? 0;
+  const trendPositive = change >= 0;
+
+  return (
+    <div className="market-card" aria-live="polite">
+      <div className="market-symbol">
+        <strong>{symbol}</strong>
+        <span className="muted tiny">{data?.timestamp ? `Updated ${formatTime(data.timestamp)}` : "Live"}</span>
+      </div>
+      <div className="market-price-row">
+        <span className="market-price">
+          {data ? currency.format(data.current) : loading ? "…" : "—"}
+        </span>
+        <span className={`market-change ${trendPositive ? "pos" : "neg"}`}>
+          {data
+            ? `${trendPositive ? "+" : ""}${change.toFixed(2)} (${trendPositive ? "+" : ""}${changePct.toFixed(2)}%)`
+            : error
+            ? "Unavailable"
+            : "Awaiting"}
+        </span>
+      </div>
+      {error && (
+        <p className="muted tiny" style={{ color: "#fb7185" }}>
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function formatTime(timestamp: number) {
+  return new Date(timestamp).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
