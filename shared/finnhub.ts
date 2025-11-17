@@ -110,6 +110,11 @@ export class FinnhubError extends Error {
 }
 
 const FINNHUB_BASE_URL = "https://finnhub.io/api/v1";
+const FINNHUB_KEY_ENV_ORDER = [
+  "FINNHUB_API_KEY",
+  "NEXT_PUBLIC_FINNHUB_API_KEY",
+  "VITE_FINNHUB_API_KEY",
+] as const;
 
 const HISTORY_WINDOWS: Record<CandleRange, { seconds: number; resolution: string }> = {
   "1d": { seconds: 60 * 60 * 24,       resolution: "5"  },
@@ -125,11 +130,19 @@ const normalizeSymbol = (symbolRaw: string | null | undefined) =>
   String(symbolRaw || "").toUpperCase().trim();
 
 const resolveApiKey = (override?: string | null) => {
-  const key = override ?? process.env.FINNHUB_API_KEY;
-  if (!key) {
-    throw new FinnhubError("Market data API key not configured", 500);
+  const normalized = override?.trim();
+  if (normalized) {
+    return normalized;
   }
-  return key;
+
+  for (const envName of FINNHUB_KEY_ENV_ORDER) {
+    const candidate = process.env[envName];
+    if (candidate && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+
+  throw new FinnhubError("Market data API key not configured", 500);
 };
 
 const resolveHistoryWindow = (range?: CandleRange) => {
