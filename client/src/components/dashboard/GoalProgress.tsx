@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Target, Plus, ArrowUpRight } from "lucide-react";
+import type { Goal } from "@shared/schema";
 
 export default function GoalProgress() {
-  const { data: goals, isLoading } = useQuery({
+  const { data: goals, isLoading } = useQuery<Goal[]>({
     queryKey: ["/api/goals"],
   });
 

@@ -13,11 +13,11 @@ export function CategoryRulesList() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data: categoryRules = [], isLoading } = useQuery({
+  const { data: categoryRules = [], isLoading } = useQuery<CategoryRule[]>({
     queryKey: ["/api/category-rules"],
   });
 
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
   });
 
@@ -108,8 +108,8 @@ export function CategoryRulesList() {
                     </CardTitle>
                     <div className="flex items-center gap-2">
                       <Switch
-                        checked={rule.isActive}
-                        onCheckedChange={(checked) => 
+                        checked={Boolean(rule.isActive)}
+                        onCheckedChange={(checked) =>
                           toggleMutation.mutate({ id: rule.id, isActive: checked })
                         }
                         data-testid={`switch-category-rule-${rule.id}`}

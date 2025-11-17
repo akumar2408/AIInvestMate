@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { useStore, monthKey, detectAnomalies } from "../state/store";
-import { useStockQuote } from "../hooks/useStockData";
+import { useStockQuote, useStockHistory } from "../hooks/useStockData";
+import { StockSparkline } from "@/components/charts/Sparkline";
 
 const MARKET_SYMBOLS = ["SPY", "QQQ", "VOO"];
 const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -243,9 +244,12 @@ type MarketTickerProps = {
 
 function MarketTicker({ symbol }: MarketTickerProps) {
   const { data, loading, error } = useStockQuote(symbol, { refreshMs: 60_000 });
+  const { data: history } = useStockHistory(symbol, { range: "1w", refreshMs: 5 * 60_000 });
   const change = data?.change ?? 0;
   const changePct = data?.changePct ?? 0;
-  const trendPositive = change >= 0;
+  const historyPoints = history?.points ?? [];
+  const historyTrend = historyPoints.length >= 2 ? historyPoints[historyPoints.length - 1].close - historyPoints[0].close : null;
+  const trendPositive = historyTrend != null ? historyTrend >= 0 : change >= 0;
 
   return (
     <div className="market-card" aria-live="polite">
@@ -264,6 +268,14 @@ function MarketTicker({ symbol }: MarketTickerProps) {
             ? "Unavailable"
             : "Awaiting"}
         </span>
+      </div>
+      <div style={{ marginTop: 8 }}>
+        <StockSparkline points={historyPoints} trendPositive={trendPositive} height={32} />
+        {historyTrend != null && (
+          <p className={`muted tiny ${trendPositive ? "pos" : "neg"}`}>
+            1w trend {trendPositive ? "+" : ""}{historyTrend.toFixed(2)}
+          </p>
+        )}
       </div>
       {error && (
         <p className="muted tiny" style={{ color: "#fb7185" }}>

@@ -2,9 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, ArrowUpRight, PieChart } from "lucide-react";
+import type { Investment } from "@shared/schema";
 
 export default function PortfolioSummary() {
-  const { data: investments, isLoading } = useQuery({
+  const { data: investments = [], isLoading } = useQuery<Investment[]>({
     queryKey: ["/api/investments"],
   });
 
@@ -32,7 +33,7 @@ export default function PortfolioSummary() {
   }
 
   const calculatePortfolioStats = () => {
-    if (!investments || investments.length === 0) {
+    if (!investments.length) {
       return {
         totalValue: 0,
         dailyChange: 0,
@@ -41,8 +42,8 @@ export default function PortfolioSummary() {
       };
     }
 
-    const totalValue = investments.reduce((sum: number, inv: any) => {
-      return sum + (parseFloat(inv.quantity) * parseFloat(inv.costBasis));
+    const totalValue = investments.reduce((sum, inv) => {
+      return sum + Number(inv.quantity ?? 0) * Number(inv.costBasis ?? 0);
     }, 0);
 
     // Mock daily change calculation (in real app, would use current prices)
@@ -50,7 +51,7 @@ export default function PortfolioSummary() {
     const dailyChangePercent = (dailyChange / totalValue) * 100;
 
     // Calculate diversity score based on number of holdings and types
-    const uniqueTypes = new Set(investments.map((inv: any) => inv.type)).size;
+    const uniqueTypes = new Set(investments.map((inv) => inv.type)).size;
     const holdingsCount = investments.length;
     const diversityScore = Math.min(10, (uniqueTypes * 2) + (holdingsCount * 0.5));
 
@@ -80,7 +81,7 @@ export default function PortfolioSummary() {
   };
 
   const stats = calculatePortfolioStats();
-  const topHoldings = investments?.slice(0, 3) || [];
+  const topHoldings = investments.slice(0, 3);
 
   return (
     <Card className="bg-slate-800/40 backdrop-blur-sm border-slate-700/50">
@@ -151,8 +152,10 @@ export default function PortfolioSummary() {
             {/* Top Holdings */}
             <div className="space-y-3">
               <h4 className="text-white font-medium">Top Holdings</h4>
-              {topHoldings.map((holding: any) => {
-                const currentValue = parseFloat(holding.quantity) * parseFloat(holding.costBasis);
+              {topHoldings.map((holding) => {
+                const quantity = Number(holding.quantity ?? 0);
+                const costBasis = Number(holding.costBasis ?? 0);
+                const currentValue = quantity * costBasis;
                 const changeSample = Math.random() * 6 - 3;
                 
                 return (
@@ -175,7 +178,7 @@ export default function PortfolioSummary() {
                           </Badge>
                         </div>
                         <p className="text-slate-400 text-sm">
-                          {parseFloat(holding.quantity).toFixed(2)} shares
+                          {quantity.toFixed(2)} shares
                         </p>
                       </div>
                     </div>

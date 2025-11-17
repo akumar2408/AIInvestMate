@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertRecurringRuleSchema } from "@shared/schema";
 import { z } from "zod";
 
 import {
@@ -32,16 +31,13 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
-const formSchema = insertRecurringRuleSchema.pick({
-  name: true,
-  amount: true,
-  merchant: true,
-  category: true,
-  direction: true,
-  cadence: true,
-  startDate: true,
-  endDate: true,
-}).extend({
+const formSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  amount: z.string().min(1, "Amount is required"),
+  merchant: z.string().min(1, "Merchant is required"),
+  category: z.string().min(1, "Category is required"),
+  direction: z.enum(["income", "expense", "transfer"]),
+  cadence: z.enum(["daily", "weekly", "monthly"]),
   startDate: z.string(),
   endDate: z.string().optional(),
 });
@@ -141,13 +137,14 @@ export function CreateRecurringRuleDialog({ open, onOpenChange }: CreateRecurrin
                   <FormItem>
                     <FormLabel>Amount</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00" 
-                        {...field} 
-                        data-testid="input-rule-amount"
-                      />
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={field.value}
+                      onChange={field.onChange}
+                      data-testid="input-rule-amount"
+                    />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -160,7 +157,7 @@ export function CreateRecurringRuleDialog({ open, onOpenChange }: CreateRecurrin
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="select-rule-direction">
                           <SelectValue />
@@ -221,7 +218,7 @@ export function CreateRecurringRuleDialog({ open, onOpenChange }: CreateRecurrin
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Frequency</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="select-rule-cadence">
                           <SelectValue />

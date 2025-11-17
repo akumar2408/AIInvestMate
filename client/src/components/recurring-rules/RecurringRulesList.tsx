@@ -14,7 +14,7 @@ export function RecurringRulesList() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data: recurringRules = [], isLoading } = useQuery({
+  const { data: recurringRules = [], isLoading } = useQuery<RecurringRule[]>({
     queryKey: ["/api/recurring-rules"],
   });
 
@@ -95,8 +95,8 @@ export function RecurringRulesList() {
                   <CardTitle className="text-lg">{rule.name}</CardTitle>
                   <div className="flex items-center gap-2">
                     <Switch
-                      checked={rule.isActive}
-                      onCheckedChange={(checked) => 
+                      checked={Boolean(rule.isActive)}
+                      onCheckedChange={(checked) =>
                         toggleMutation.mutate({ id: rule.id, isActive: checked })
                       }
                       data-testid={`switch-rule-${rule.id}`}

@@ -2,7 +2,13 @@ import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 import OpenAI from "openai";
-import { fetchFinnhubETF, fetchFinnhubQuote, FinnhubError } from "../shared/finnhub";
+import {
+  fetchFinnhubCandles,
+  fetchFinnhubETF,
+  fetchFinnhubQuote,
+  FinnhubError,
+  type CandleRange,
+} from "../shared/finnhub";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -85,6 +91,21 @@ app.get("/api/stocks/etf", async (req, res) => {
     }
     console.error("etf handler error", err);
     return res.status(500).json({ error: "Failed to fetch ETF data" });
+  }
+});
+
+app.get("/api/stocks/history", async (req, res) => {
+  try {
+    const range = (typeof req.query.range === "string" ? req.query.range : undefined) as CandleRange | undefined;
+    const resolution = typeof req.query.resolution === "string" ? req.query.resolution : undefined;
+    const payload = await fetchFinnhubCandles(String(req.query.symbol || ""), { range, resolution });
+    return res.json(payload);
+  } catch (err) {
+    if (err instanceof FinnhubError) {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
+    console.error("history handler error", err);
+    return res.status(500).json({ error: "Failed to fetch history" });
   }
 });
 

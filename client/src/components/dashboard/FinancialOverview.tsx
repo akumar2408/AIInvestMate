@@ -2,8 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Wallet, CreditCard, PieChart, Target } from "lucide-react";
 
+type DashboardSummary = {
+  totalBalance: number;
+  monthlySpending: number;
+  investmentValue: number;
+  savingsProgress: number;
+};
+
 export default function FinancialOverview() {
-  const { data: summary, isLoading } = useQuery({
+  const { data: summary, isLoading } = useQuery<DashboardSummary>({
     queryKey: ["/api/dashboard/summary"],
   });
 

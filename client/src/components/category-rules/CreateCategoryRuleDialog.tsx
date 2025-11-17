@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertCategoryRuleSchema } from "@shared/schema";
 import { z } from "zod";
 import { Category } from "@shared/schema";
 
@@ -34,15 +33,12 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
-const formSchema = insertCategoryRuleSchema.pick({
-  merchantRegex: true,
-  amountMin: true,
-  amountMax: true,
-  categoryId: true,
-  priority: true,
-}).extend({
+const formSchema = z.object({
+  merchantRegex: z.string().min(1, "Pattern is required"),
+  categoryId: z.string().min(1, "Category is required"),
   amountMin: z.string().optional(),
   amountMax: z.string().optional(),
+  priority: z.coerce.number().min(0).max(1000).default(100),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -142,7 +138,7 @@ export function CreateCategoryRuleDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Auto-assign Category</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || ""}>
                     <FormControl>
                       <SelectTrigger data-testid="select-category">
                         <SelectValue placeholder="Select a category" />
@@ -169,11 +165,12 @@ export function CreateCategoryRuleDialog({
                   <FormItem>
                     <FormLabel>Min Amount (Optional)</FormLabel>
                     <FormControl>
-                      <Input 
+                      <Input
                         type="number"
                         step="0.01"
-                        placeholder="0.00" 
-                        {...field} 
+                        placeholder="0.00"
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
                         data-testid="input-amount-min"
                       />
                     </FormControl>
@@ -189,11 +186,12 @@ export function CreateCategoryRuleDialog({
                   <FormItem>
                     <FormLabel>Max Amount (Optional)</FormLabel>
                     <FormControl>
-                      <Input 
+                      <Input
                         type="number"
                         step="0.01"
-                        placeholder="999.99" 
-                        {...field} 
+                        placeholder="999.99"
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
                         data-testid="input-amount-max"
                       />
                     </FormControl>
@@ -210,11 +208,11 @@ export function CreateCategoryRuleDialog({
                 <FormItem>
                   <FormLabel>Priority</FormLabel>
                   <FormControl>
-                    <Input 
+                    <Input
                       type="number"
-                      placeholder="100" 
-                      {...field} 
-                      onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                      placeholder="100"
+                      value={field.value ?? 0}
+                      onChange={(e) => field.onChange(Number(e.target.value) || 0)}
                       data-testid="input-priority"
                     />
                   </FormControl>
