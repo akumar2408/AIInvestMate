@@ -11,8 +11,33 @@ import {
   timestamp,
   varchar,
 } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import { createRequire } from "module";
 import { z } from "zod";
+
+type InferInsert<TTable> = TTable extends { $inferInsert: infer T } ? T : never;
+
+type InsertSchema<TTable> = z.ZodType<InferInsert<TTable>> & {
+  omit(
+    shape: Partial<Record<keyof InferInsert<TTable>, true>>,
+  ): InsertSchema<TTable>;
+  partial(): z.ZodType<Partial<InferInsert<TTable>>>;
+};
+
+type InsertSchemaFactory = <TTable extends { $inferInsert: unknown }>(
+  table: TTable,
+) => InsertSchema<TTable>;
+
+const require = createRequire(import.meta.url);
+
+const { createInsertSchema } = (() => {
+  try {
+    return require("drizzle-zod") as { createInsertSchema: InsertSchemaFactory };
+  } catch (error) {
+    throw new Error(
+      'The "drizzle-zod" package is required for schema validation. Please run "npm install" before executing type checks.',
+    );
+  }
+})();
 
 // Session storage table (mandatory for Replit Auth)
 export const sessions = pgTable(
