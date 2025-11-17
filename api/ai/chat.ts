@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import OpenAI from 'openai';
-import { concepts } from '@shared/concepts';
+import { concepts } from '../../shared/concepts';
 
 type State = {
   txns?: { date:string; description:string; category:string; amount:number }[];
