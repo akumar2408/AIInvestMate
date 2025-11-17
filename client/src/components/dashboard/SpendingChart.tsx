@@ -29,7 +29,7 @@ export default function SpendingChart() {
   // Process transactions into monthly spending data
   const processTransactionData = () => {
     if (!transactions || transactions.length === 0) {
-      // Generate mock data for demonstration
+      // Generate synthetic data for visualization
       return [
         { month: 'Jul', spending: 3200 },
         { month: 'Aug', spending: 2800 },

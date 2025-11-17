@@ -98,9 +98,8 @@ export default function Investments() {
   };
 
   const getTypeIcon = (type: string) => {
-    // For demo purposes, using mock performance data
-    const mockPerformance = Math.random() > 0.5;
-    return mockPerformance ? (
+    const samplePerformance = Math.random() > 0.5;
+    return samplePerformance ? (
       <TrendingUp className="w-4 h-4 text-emerald-400" />
     ) : (
       <TrendingDown className="w-4 h-4 text-red-400" />

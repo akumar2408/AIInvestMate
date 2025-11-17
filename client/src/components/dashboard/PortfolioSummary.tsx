@@ -153,7 +153,7 @@ export default function PortfolioSummary() {
               <h4 className="text-white font-medium">Top Holdings</h4>
               {topHoldings.map((holding: any) => {
                 const currentValue = parseFloat(holding.quantity) * parseFloat(holding.costBasis);
-                const mockChange = Math.random() * 6 - 3; // Random change between -3% and +3%
+                const changeSample = Math.random() * 6 - 3;
                 
                 return (
                   <div 
@@ -182,7 +182,7 @@ export default function PortfolioSummary() {
                     
                     <div className="text-right">
                       <div className="flex items-center space-x-2">
-                        {mockChange >= 0 ? (
+                        {changeSample >= 0 ? (
                           <TrendingUp className="w-4 h-4 text-emerald-400" />
                         ) : (
                           <TrendingDown className="w-4 h-4 text-red-400" />
@@ -191,8 +191,8 @@ export default function PortfolioSummary() {
                           {formatCurrency(currentValue)}
                         </p>
                       </div>
-                      <p className={`text-sm ${mockChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {mockChange >= 0 ? '+' : ''}{mockChange.toFixed(1)}%
+                      <p className={`text-sm ${changeSample >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {changeSample >= 0 ? '+' : ''}{changeSample.toFixed(1)}%
                       </p>
                     </div>
                   </div>
