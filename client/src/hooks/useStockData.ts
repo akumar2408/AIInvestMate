@@ -1,6 +1,21 @@
 import { useEffect, useState } from "react";
 import type { CandleRange, StockHistoryPayload } from "@shared/finnhub";
 
+async function readJsonSafely<T = unknown>(resp: Response): Promise<T> {
+  const clone = resp.clone();
+  try {
+    return (await resp.json()) as T;
+  } catch (err) {
+    const fallback = await clone.text();
+    const snippet = fallback?.trim()?.slice(0, 200);
+    const message =
+      snippet?.length
+        ? snippet
+        : `Unexpected response from server (status ${resp.status})`;
+    throw new Error(message);
+  }
+}
+
 export type Quote = {
   symbol: string;
   current: number;
@@ -27,6 +42,8 @@ export type ETFProfile = {
 
 export type CandlePoint = StockHistoryPayload["points"][number];
 
+type ApiResponse<T> = T & { error?: string };
+
 export function useStockQuote(symbol: string | null, opts?: { refreshMs?: number }) {
   const [data, setData] = useState<Quote | null>(null);
   const [loading, setLoading] = useState(false);
@@ -43,7 +60,7 @@ export function useStockQuote(symbol: string | null, opts?: { refreshMs?: number
         setLoading(true);
         setError(null);
         const resp = await fetch(`/api/stocks/quote?symbol=${encodeURIComponent(symbol)}`);
-        const json = await resp.json();
+        const json = await readJsonSafely<ApiResponse<Quote>>(resp);
         if (!resp.ok) {
           throw new Error(json.error || "Failed to load quote");
         }
@@ -85,7 +102,7 @@ export function useETFOverview(symbol: string | null) {
         setLoading(true);
         setError(null);
         const resp = await fetch(`/api/stocks/etf?symbol=${encodeURIComponent(symbol)}`);
-        const json = await resp.json();
+        const json = await readJsonSafely<ApiResponse<ETFProfile>>(resp);
         if (!resp.ok) throw new Error(json.error || "Failed to load ETF data");
         if (!cancelled) setData(json);
       } catch (e: any) {
@@ -126,7 +143,7 @@ export function useStockHistory(
         if (opts?.range) params.set("range", opts.range);
         if (opts?.resolution) params.set("resolution", opts.resolution);
         const resp = await fetch(`/api/stocks/history?${params.toString()}`);
-        const json = await resp.json();
+        const json = await readJsonSafely<ApiResponse<StockHistoryPayload>>(resp);
         if (!resp.ok) throw new Error(json.error || "Failed to load history");
         if (!cancelled) setData(json);
       } catch (e: any) {
