@@ -116,7 +116,7 @@ export default function AIChat() {
         </div>
       </div>
 
-      <aside className="card pad summary">
+      <aside className="panel summary">
         <h4>Smart summary</h4>
         {extras ? (
           <div>
