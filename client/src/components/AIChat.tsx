@@ -136,33 +136,56 @@ export default function AIChat() {
   async function send(text?: string) {
     const msg = (text ?? input).trim();
     if (!msg) return;
+
+    // clear input + push user message
     setInput("");
-    setMessages(m => [...m, { id: crypto.randomUUID(), role: "user", content: msg }]);
+    setMessages((m) => [...m, { id: crypto.randomUUID(), role: "user", content: msg }]);
     setLoading(true);
+    setStatus("");
+
     try {
+      // Make context super defensive so it never throws
+      const safeContext = {
+        txns: Array.isArray(state.txns) ? state.txns.slice(-60) : [],
+        budgets: Array.isArray(state.budgets) ? state.budgets : [],
+        goals: Array.isArray(state.goals) ? state.goals : [],
+        profile: state.profile ?? {},
+      };
+
       const res = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        // send context as an object; chat.ts already handles both string & object
         body: JSON.stringify({
           message: msg,
-          context: JSON.stringify({
-            txns: state.txns.slice(-60),
-            budgets: state.budgets,
-            goals: state.goals,
-            profile: state.profile,
-          }),
+          context: safeContext,
         }),
       });
+
+      if (!res.ok) {
+        // if the route is wrong or server blew up, this prevents res.json() from throwing
+        throw new Error(`Chat endpoint failed with status ${res.status}`);
+      }
+
       const data: AIResponse = await res.json();
-      setMessages(m => [...m, { id: crypto.randomUUID(), role: "assistant", content: data.reply }]);
+
+      if (!data || !data.reply) {
+        throw new Error("Missing reply from chat endpoint");
+      }
+
+      setMessages((m) => [...m, { id: crypto.randomUUID(), role: "assistant", content: data.reply }]);
+
       if (data.extras) setExtras(data.extras);
       if (data.insights?.kpis) setKpis(data.insights.kpis);
-      if (data.reply) {
-        logChat({ question: msg, answer: data.reply });
-      }
+
+      logChat({ question: msg, answer: data.reply });
       setStatus("Answered • " + new Date().toLocaleTimeString());
     } catch (e) {
-      setMessages(m => [...m, { id: crypto.randomUUID(), role: "assistant", content: "Sorry, I hit an error. Try again." }]);
+      console.error("AI chat error", e);
+      setMessages((m) => [
+        ...m,
+        { id: crypto.randomUUID(), role: "assistant", content: "Sorry, I hit an error. Try again." },
+      ]);
       setStatus("AI unavailable. Try again.");
     } finally {
       setLoading(false);
