@@ -2,20 +2,18 @@ import React, { useState } from "react";
 import { useStore } from "../state/store";
 
 export function SyncPanel() {
-  const { state } = useStore();
+  const { state, refreshFromCloud, syncStatus, lastSyncedAt } = useStore();
   const [userId, setUserId] = useState(state.userId || "");
   const [msg, setMsg] = useState("");
 
   async function pull() {
-    setMsg("Pulling...");
-    const r = await fetch(`/api/sync/pull?userId=${encodeURIComponent(userId)}`);
-    const data = await r.json();
-    if (data.txns) {
-      localStorage.setItem("aimate_state_v1", JSON.stringify({ ...state, ...data }));
-      setMsg("Imported from cloud. Refresh to see changes.");
-    } else {
-      setMsg("Nothing found (or demo mode).");
+    if (!userId) {
+      setMsg("User ID required");
+      return;
     }
+    setMsg("Pulling...");
+    await refreshFromCloud(userId);
+    setMsg("Pulled latest snapshot");
   }
 
   async function push() {
@@ -23,7 +21,14 @@ export function SyncPanel() {
     const r = await fetch("/api/sync/push", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, txns: state.txns, budgets: state.budgets, goals: state.goals }),
+      body: JSON.stringify({
+        userId,
+        txns: state.txns,
+        budgets: state.budgets,
+        goals: state.goals,
+        profile: state.profile,
+        aiLogs: state.aiLogs,
+      }),
     });
     const data = await r.json();
     setMsg(data.ok ? "Synced to cloud." : "Push failed.");
@@ -37,7 +42,9 @@ export function SyncPanel() {
         <button className="ghost" onClick={pull}>Import from cloud</button>
         <button className="btn" onClick={push}>Sync now</button>
       </div>
-      <div className="muted" style={{marginTop:8}}>{msg || "Tip: Use your auth user id when Supabase is configured."}</div>
+      <div className="muted" style={{marginTop:8}}>
+        {msg || `Status: ${syncStatus} · Last synced ${lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : "never"}`}
+      </div>
     </div>
   );
 }

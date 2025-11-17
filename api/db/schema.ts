@@ -29,3 +29,22 @@ export const goals = pgTable("goals", {
   deadline: varchar("deadline", { length: 16 }),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+export const profiles = pgTable("profiles", {
+  userId: text("user_id").primaryKey(),
+  incomeRange: varchar("income_range", { length: 32 }).notNull(),
+  goalFocus: varchar("goal_focus", { length: 64 }).notNull(),
+  riskComfort: varchar("risk_comfort", { length: 16 }).notNull(),
+  experience: varchar("experience", { length: 32 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const aiLogs = pgTable("ai_logs", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  month: varchar("month", { length: 7 }).notNull(),
+  question: text("question").notNull(),
+  answer: text("answer").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});

@@ -1,8 +1,28 @@
 import React, { useMemo, useRef, useState } from "react";
-import { useStore, monthKey } from "../state/store";
+import { useStore, monthKey, Txn } from "../state/store";
 import { toCSV } from "../lib/utils";
+import { InfoPill } from "../components/InfoPill";
+import { AskAIButton } from "../components/AskAIButton";
 
 type FilterView = "all" | "income" | "expense";
+
+const categoryRules = [
+  { match: /rent|landlord|apartment/, category: "Housing" },
+  { match: /uber|lyft|ride|taxi/, category: "Transport" },
+  { match: /starbucks|coffee|cafe|restaurant|grubhub|doordash|dining/, category: "Dining" },
+  { match: /netflix|spotify|hulu|disney|subscription|prime/, category: "Subscriptions" },
+  { match: /airbnb|hotel|travel|delta|united/, category: "Travel" },
+  { match: /amazon|target|walmart|shop/, category: "Shopping" },
+  { match: /paycheck|salary|deposit/, category: "Income" },
+];
+
+function getSuggestion(description: string) {
+  if (!description) return null;
+  const lower = description.toLowerCase();
+  const rule = categoryRules.find((r) => r.match.test(lower));
+  if (!rule) return null;
+  return { category: rule.category };
+}
 
 export function TransactionsPage() {
   const { state, addTxn, deleteTxn, importTxnsCSV } = useStore();
@@ -14,8 +34,11 @@ export function TransactionsPage() {
   });
   const [view, setView] = useState<FilterView>("all");
   const [query, setQuery] = useState("");
+  const [aiInsight, setAiInsight] = useState<{ title: string; answer: string } | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const thisMonth = new Date().toISOString().slice(0, 7);
+  const suggestion = useMemo(() => getSuggestion(form.description), [form.description]);
 
   const filteredTxns = state.txns
     .filter((t) => {
@@ -89,21 +112,37 @@ export function TransactionsPage() {
     URL.revokeObjectURL(url);
   };
 
-  const importPlaidMock = async () => {
-    const r = await fetch("/api/plaid/transactions");
-    const data = await r.json();
-    if (!data.transactions?.length) return;
+  async function askAI(title: string, payload: any) {
+    setAiLoading(true);
+    setAiInsight(null);
+    try {
+      const res = await fetch("/api/ai/explain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: title, context: payload }),
+      });
+      const data = await res.json();
+      setAiInsight({ title, answer: data.answer || "No explanation generated." });
+    } catch (error) {
+      console.error(error);
+      setAiInsight({ title, answer: "AI explainers are offline." });
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
-    const raw = localStorage.getItem("aimate_state_v1") || "{}";
-    const current = raw ? JSON.parse(raw) : { txns: [] };
-    const existing = new Set<string>((current.txns || []).map((t: any) => t.id));
-    const merged = [...(current.txns || [])];
-    data.transactions.forEach((t: any) => {
-      if (!existing.has(t.id)) merged.push(t);
+  const explainMonth = () =>
+    askAI("Explain this month's activity", {
+      month: thisMonth,
+      totals: monthlyStats,
+      transactions: filteredTxns,
     });
-    localStorage.setItem("aimate_state_v1", JSON.stringify({ ...current, txns: merged }));
-    alert("Imported mocked Plaid transactions. Refresh Dashboard.");
-  };
+
+  const explainTxn = (txn: Txn) =>
+    askAI(`Explain ${txn.description}`, {
+      txn,
+      budgets: state.budgets.filter((b) => b.month === monthKey(txn.date)),
+    });
 
   return (
     <section style={{ marginTop: 12 }}>
@@ -127,6 +166,12 @@ export function TransactionsPage() {
                   </button>
                 ))}
               </div>
+              <AskAIButton onClick={explainMonth} />
+            </div>
+            <div className="pill-row" style={{ marginTop: 12 }}>
+              <InfoPill term="DCA" />
+              <InfoPill term="ETF" />
+              <InfoPill term="Expense ratio" />
             </div>
             <div className="grid-kpi" style={{ marginTop: 20 }}>
               <div className="stat-card">
@@ -167,6 +212,11 @@ export function TransactionsPage() {
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
               />
+              {suggestion && form.category !== suggestion.category && (
+                <button className="chip" type="button" onClick={() => setForm((prev) => ({ ...prev, category: suggestion.category }))}>
+                  Suggested: {suggestion.category}
+                </button>
+              )}
               <input
                 className="input"
                 placeholder="Amount (negative=expense)"
@@ -208,7 +258,14 @@ export function TransactionsPage() {
                       <td style={{ textAlign: "right" }} className={t.amount < 0 ? "status-negative" : "status-positive"}>
                         {t.amount < 0 ? "-" : "+"}${Math.abs(t.amount).toFixed(2)}
                       </td>
-                      <td style={{ textAlign: "right" }}>
+                      <td style={{ textAlign: "right", display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                        <AskAIButton
+                          variant="ghost"
+                          label=""
+                          title="Explain this transaction"
+                          onClick={() => explainTxn(t)}
+                          style={{ paddingInline: 10, minWidth: 0 }}
+                        />
                         <button className="ghost" onClick={() => deleteTxn(t.id)}>
                           Delete
                         </button>
@@ -225,14 +282,18 @@ export function TransactionsPage() {
               <button className="ghost" onClick={exportJSON}>
                 Export JSON
               </button>
-              <button className="ghost" onClick={importPlaidMock}>
-                Import Plaid mock
-              </button>
             </div>
           </div>
         </div>
 
         <div className="page-stack">
+          {aiInsight && (
+            <div className="card pad">
+              <div className="title">AI explanation</div>
+              <strong>{aiInsight.title}</strong>
+              <p className="muted" style={{ marginTop: 8 }}>{aiLoading ? "Thinking..." : aiInsight.answer}</p>
+            </div>
+          )}
           <div className="card pad">
             <div className="title">Automation suggestions</div>
             <ul className="list-clean">

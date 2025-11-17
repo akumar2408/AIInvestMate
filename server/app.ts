@@ -76,15 +76,31 @@ app.listen(PORT, "0.0.0.0", () => {
 // ---- Helpers ----
 function mockAIReply(message: string) {
   const lower = message.toLowerCase();
-  let reply =
-    "I'm running in demo mode (no API key). Here's a practical answer based on heuristics:\n";
+  let snapshot = "Income steady | Spending trending normal | Savings on track";
+  let insights = [
+    "You're allocating most discretionary spend to dining and travel.",
+    "Savings rate holds near 20%, which keeps goals on pace.",
+  ];
+  let next = [
+    "Schedule a 5-minute weekly review",
+    "Auto-transfer leftovers into HYSA",
+  ];
   if (lower.includes("etf")) {
-    reply += "- Broad-market ETF (e.g., VTI/VOO) for core exposure\n- Add international (VXUS) for diversification\n- Consider dollar-cost averaging\n- Hold long-term, minimize fees";
+    snapshot = "Core ETF plan ready";
+    insights = [
+      "Pair a broad US ETF (VTI/VOO) with international (VXUS) for balance.",
+      "Keep fees low and stick to the plan regardless of headlines.",
+    ];
+    next = ["Set a recurring buy", "Rebalance annually", "Note tax lots"];
   } else if (lower.includes("budget") || lower.includes("spend")) {
-    reply += "- 50/30/20 as a baseline\n- Cap fixed costs at ~50% net income\n- Track top 3 categories weekly\n- Automate savings transfers on payday";
-  } else {
-    reply += "- Set goal, timeline, and monthly contribution\n- Build 3–6 months emergency fund\n- Avoid high-interest debt before investing";
+    snapshot = "Budget baseline built";
+    insights = [
+      "Cap essentials near 50% of take-home pay.",
+      "Give every dollar a job across needs, wants, and goals.",
+    ];
+    next = ["Lock envelopes for top categories", "Automate payday transfers"];
   }
+  const reply = `Snapshot:\n- ${snapshot}\nInsights:\n- ${insights.join("\n- ")}\nNext Actions:\n- ${next.join("\n- ")}`;
   return { reply, extras: smartExtrasFromText(reply) };
 }
 
