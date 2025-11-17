@@ -1,19 +1,17 @@
 
 import React, { useState } from "react";
-import { supabase } from "../lib/supabase";
+import { supabase } from "../lib/supabaseClient";
 
 export function AuthPanel() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState("");
 
   async function signIn() {
-    if (!supabase) { setStatus("Supabase not configured."); return; }
     const { error } = await supabase.auth.signInWithOtp({ email });
     setStatus(error ? error.message : "Magic link sent. Check your email.");
   }
 
   async function signOut() {
-    if (!supabase) { setStatus("Supabase not configured."); return; }
     await supabase.auth.signOut();
     setStatus("Signed out");
   }

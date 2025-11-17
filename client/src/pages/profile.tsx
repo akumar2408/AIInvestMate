@@ -3,6 +3,7 @@ import { useStore } from "../state/store";
 import { SyncPanel } from "../components/SyncPanel";
 import { AuthPanel } from "../components/AuthPanel";
 import { toCSV } from "../lib/utils";
+import { requestWizardOpen } from "../lib/wizardSignals";
 
 export function ProfilePage() {
   const { state, exportAll } = useStore();
@@ -105,7 +106,12 @@ export function ProfilePage() {
 
         <div className="page-stack">
           <div className="card pad">
-            <div className="title">Profile</div>
+            <div className="title">
+              Profile
+              <button className="link-btn" onClick={requestWizardOpen}>
+                Edit personalization
+              </button>
+            </div>
             {state.profile ? (
               <ul className="list-clean">
                 <li>
