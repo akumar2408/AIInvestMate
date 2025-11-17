@@ -10,7 +10,7 @@ import { SimulatorPage } from "../pages/simulator";
 import AIChat from "../components/AIChat";
 import { StoreProvider, useStore } from "../state/store";
 import { OnboardingWizard } from "../components/OnboardingWizard";
-import { supabase } from "../lib/supabaseClient";
+import { supabase } from "../lib/supabase";
 
 type Route = "dashboard" | "transactions" | "budgets" | "goals" | "reports" | "chat" | "sim" | "profile";
 

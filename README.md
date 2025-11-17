@@ -49,7 +49,7 @@ npm run check        # Type-check the repo
 The dev server hosts the React app on `http://localhost:5173` and the Express API on `http://localhost:5001` (see `package.json`).
 
 ## ☁️ Supabase + data sync
-- `client/src/lib/supabaseClient.ts` creates a single Supabase client seeded by the env vars.
+- `client/src/lib/supabase.ts` creates a single Supabase client seeded by the env vars.
 - `client/src/state/store.tsx` bootstraps the Zustand store, automatically creating a profile row, pulling latest transactions/budgets/goals/logs, and pushing mutations back to Supabase.
 - Row Level Security is enabled. During local builds you can use permissive dev policies (see SQL in the Supabase dashboard). Lock this down before launch.
 
