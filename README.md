@@ -7,7 +7,7 @@ A cinematic, AI-assisted personal finance cockpit that blends real-time budgetin
 - **Supabase cloud sync** – profiles, transactions, budgets, goals, and AI chat logs persist via `@supabase/supabase-js` with auth-aware hydration inside the Zustand store.
 - **AI chat + simulator** – the dashboard ships with an AI assistant and savings simulator so users can test scenarios before committing.
 - **Reports, budgets & goals** – cards, charts, CSV export, and anomaly detection give a quick read on cash flow.
-- **Full-stack ready** – Express API (in `server/`) plus Drizzle schema (`api/db`) so you can add cron jobs, Plaid connectors, or Stripe-powered upgrades when you’re ready.
+- **Full-stack ready** – Express API (in `server/`) plus shared Drizzle schema helpers (`shared/schema.ts` + `server/db.ts`) so you can add cron jobs, Plaid connectors, or Stripe-powered upgrades when you’re ready.
 
 ## 🗂 Project structure
 ```
@@ -15,7 +15,7 @@ client/               # Vite + React SPA
 client/src/state      # Zustand store wired to Supabase
 client/src/components # UI building blocks (AI chat, onboarding, etc.)
 server/               # Express API (auth, plaid mocks, edge-style handlers)
-api/db                # Drizzle ORM schema and seed helpers
+shared/schema.ts      # Drizzle ORM schema and helpers shared by server + client
 ```
 
 ## 🚀 Getting started

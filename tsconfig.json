@@ -18,10 +18,10 @@
     "paths": {
       "@/*": ["./client/src/*"],
       "@shared/*": ["./shared/*"],
-      "zod": ["./node_modules/zod/v3"],
-      "zod/*": ["./node_modules/zod/v3/*"],
-      "zod/v4": ["./node_modules/zod/v3"],
-      "zod/v4/*": ["./node_modules/zod/v3/*"],
+      "zod/v4": ["./node_modules/zod"],
+      "zod/v4/*": ["./node_modules/zod/*"],
+      "zod/v4-mini": ["./node_modules/zod"],
+      "zod/v4-mini/*": ["./node_modules/zod/*"],
       "openid-client/passport": ["./node_modules/openid-client/build/passport"]
     }
   }
