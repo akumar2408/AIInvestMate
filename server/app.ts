@@ -1,3 +1,4 @@
+// server/app.ts
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -27,7 +28,7 @@ app.get("/api/auth/user", (_req, res) => {
     id: "demo-user",
     name: "Aayush",
     email: "aayush@example.com",
-    subscription: { plan: "free" }
+    subscription: { plan: "free" },
   });
 });
 
@@ -53,12 +54,14 @@ app.post("/api/ai/chat", async (req, res) => {
       model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: `${message || ""}` }
+        { role: "user", content: `${message || ""}` },
       ],
-      temperature: 0.2
+      temperature: 0.2,
     });
 
-    const content = response.choices?.[0]?.message?.content ?? "Sorry, I couldn't generate a response.";
+    const content =
+      response.choices?.[0]?.message?.content ??
+      "Sorry, I couldn't generate a response.";
     const extras = smartExtrasFromText(content);
 
     return res.json({ reply: content, extras });
@@ -68,6 +71,7 @@ app.post("/api/ai/chat", async (req, res) => {
   }
 });
 
+// --- Market data: quote ---
 app.get("/api/stocks/quote", async (req, res) => {
   try {
     const quote = await fetchFinnhubQuote(String(req.query.symbol || ""));
@@ -81,6 +85,7 @@ app.get("/api/stocks/quote", async (req, res) => {
   }
 });
 
+// --- Market data: ETF overview ---
 app.get("/api/stocks/etf", async (req, res) => {
   try {
     const payload = await fetchFinnhubETF(String(req.query.symbol || ""));
@@ -94,11 +99,18 @@ app.get("/api/stocks/etf", async (req, res) => {
   }
 });
 
+// --- Market data: history / sparkline ---
 app.get("/api/stocks/history", async (req, res) => {
   try {
-    const range = (typeof req.query.range === "string" ? req.query.range : undefined) as CandleRange | undefined;
-    const resolution = typeof req.query.resolution === "string" ? req.query.resolution : undefined;
-    const payload = await fetchFinnhubCandles(String(req.query.symbol || ""), { range, resolution });
+    // Accept ?range=1w|1m|3m|1y (defaults to 1w)
+    const rawRange =
+      typeof req.query.range === "string" ? req.query.range : "1w";
+    const range = rawRange as CandleRange;
+
+    const payload = await fetchFinnhubHistory(
+      String(req.query.symbol || ""),
+      range
+    );
     return res.json(payload);
   } catch (err) {
     if (err instanceof FinnhubError) {
@@ -129,10 +141,7 @@ function mockAIReply(message: string) {
     "You're allocating most discretionary spend to dining and travel.",
     "Savings rate holds near 20%, which keeps goals on pace.",
   ];
-  let next = [
-    "Schedule a 5-minute weekly review",
-    "Auto-transfer leftovers into HYSA",
-  ];
+  let next = ["Schedule a 5-minute weekly review", "Auto-transfer leftovers into HYSA"];
   if (lower.includes("etf")) {
     snapshot = "Core ETF plan ready";
     insights = [
@@ -148,16 +157,26 @@ function mockAIReply(message: string) {
     ];
     next = ["Lock envelopes for top categories", "Automate payday transfers"];
   }
-  const reply = `Snapshot:\n- ${snapshot}\nInsights:\n- ${insights.join("\n- ")}\nNext Actions:\n- ${next.join("\n- ")}`;
+  const reply = `Snapshot:
+- ${snapshot}
+Insights:
+- ${insights.join("\n- ")}
+Next Actions:
+- ${next.join("\n- ")}`;
   return { reply, extras: smartExtrasFromText(reply) };
 }
 
 function smartExtrasFromText(text: string) {
   // naive keyword tagging + risk guess
-  const tags = Array.from(new Set(
-    (text.match(/\b(etf|budget|dca|fees|diversification|risk|s&p|international|savings|emergency fund|goals)\b/gi) || [])
-      .map(t => t.toLowerCase())
-  )).slice(0, 6);
+  const tags = Array.from(
+    new Set(
+      (
+        text.match(
+          /\b(etf|budget|dca|fees|diversification|risk|s&p|international|savings|emergency fund|goals)\b/gi
+        ) || []
+      ).map((t) => t.toLowerCase())
+    )
+  ).slice(0, 6);
 
   const riskLevel = /high risk|leverage|options/i.test(text)
     ? "high"
@@ -168,7 +187,7 @@ function smartExtrasFromText(text: string) {
   const nextActions = [
     "Define goal + timeline",
     "Enable automatic contributions",
-    "Review allocation quarterly"
+    "Review allocation quarterly",
   ];
 
   return { tags, riskLevel, nextActions };
