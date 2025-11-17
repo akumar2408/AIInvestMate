@@ -1,62 +1,213 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { useStore, monthKey, detectAnomalies } from "../state/store";
 
 export function Dashboard() {
   const { state } = useStore();
-  const thisMonth = new Date().toISOString().slice(0,7);
-  const txns = state.txns.filter(t => monthKey(t.date) === thisMonth);
-  const income = txns.filter(t => t.amount > 0).reduce((a,b)=>a+b.amount,0);
-  const spend = Math.abs(txns.filter(t => t.amount < 0).reduce((a,b)=>a+b.amount,0));
+  const thisMonth = new Date().toISOString().slice(0, 7);
+  const txns = state.txns.filter((t) => monthKey(t.date) === thisMonth);
+  const income = txns.filter((t) => t.amount > 0).reduce((a, b) => a + b.amount, 0);
+  const spend = Math.abs(
+    txns.filter((t) => t.amount < 0).reduce((a, b) => a + b.amount, 0)
+  );
   const savings = Math.max(0, income - spend);
   const savingsRate = income ? Math.round((savings / income) * 100) : 0;
+  const runwayMonths = spend ? Math.max(1, Math.round((state.cash || 12000) / spend)) : 12;
+  const autopilotScore = Math.min(
+    100,
+    45 + state.goals.length * 6 + state.budgets.length * 4 + Math.min(20, Math.round(state.txns.length / 5))
+  );
 
-  const topCats = Object.entries(txns.reduce((acc:any,t)=>{
-    if (t.amount<0) acc[t.category]=(acc[t.category]||0)+Math.abs(t.amount);
-    return acc;
-  },{})).sort((a:any,b:any)=>b[1]-a[1]).slice(0,5);
+  const topCats = Object.entries(
+    txns.reduce((acc: any, t) => {
+      if (t.amount < 0) acc[t.category] = (acc[t.category] || 0) + Math.abs(t.amount);
+      return acc;
+    }, {})
+  )
+    .sort((a: any, b: any) => b[1] - a[1])
+    .slice(0, 5);
+
+  const anomalies = detectAnomalies(state.txns).slice(0, 3);
+  const latestTxns = state.txns.slice(-4).reverse();
+
+  const budgetsByCat = useMemo(() => {
+    return state.txns
+      .filter((t) => monthKey(t.date) === thisMonth && t.amount < 0)
+      .reduce((acc: any, t) => {
+        acc[t.category] = (acc[t.category] || 0) + Math.abs(t.amount);
+        return acc;
+      }, {});
+  }, [state.txns, thisMonth]);
+
+  const budgetsAtRisk = state.budgets
+    .filter((b) => b.month === thisMonth)
+    .map((b) => {
+      const actual = budgetsByCat[b.category] || 0;
+      return { ...b, actual, pct: Math.min(150, Math.round((actual / Math.max(1, b.limit)) * 100)) };
+    })
+    .filter((b) => b.pct >= 70);
+
+  const scenarioPlays = [
+    {
+      label: "Dial down lifestyle",
+      detail: `Cut dining & shopping by 10% to free $${(spend * 0.1).toFixed(0)} / mo`,
+    },
+    {
+      label: "Snowball savings",
+      detail: `Lock $${(savings || 0).toFixed(0)} to taxable brokerage for +${(savings * 12 * 0.07).toFixed(0)} / yr`,
+    },
+    {
+      label: "Boost runway",
+      detail: `Move idle cash into HYSA · extends runway to ${runwayMonths + 2} months`,
+    },
+  ];
 
   return (
-    <section style={{marginTop: 12}}>
-      <div className="hero">
-        <div className="card pad">
-          <div className="title">This month</div>
-          <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12}}>
-            <Kpi label="Income" value={`$${income.toFixed(0)}`} />
-            <Kpi label="Spending" value={`$${spend.toFixed(0)}`} />
-            <Kpi label="Savings rate" value={`${savingsRate}%`} />
+    <section style={{ marginTop: 12 }}>
+      <div className="page-split">
+        <div className="page-stack">
+          <div className="card pad">
+            <div className="title">
+              Pulse snapshot <strong>Realtime synced</strong>
+            </div>
+            <p className="subtle">AI InvestMate keeps every account reconciled so you can plan with clarity.</p>
+            <div className="stat-grid">
+              <Kpi label="Income" value={`$${income.toFixed(0)}`} trend={savingsRate > 35 ? "+ healthy" : "watch"} />
+              <Kpi label="Spending" value={`$${spend.toFixed(0)}`} trend={`-${Math.round((savings / Math.max(1, spend)) * 100)}% net`} />
+              <Kpi label="Savings rate" value={`${savingsRate}%`} trend={`${runwayMonths} mo runway`} />
+              <Kpi label="Projected savings" value={`$${(savings * 12).toFixed(0)}`} trend={"12 mo horizon"} />
+            </div>
+            <div className="pill-row">
+              {["Ask AI what-if", "Schedule advisor", "Share snapshot"].map((pill) => (
+                <span key={pill} className="pill">
+                  {pill}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="card pad">
+            <div className="title">Autopilot</div>
+            <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ minWidth: 160 }}>
+                <div className="radial">
+                  <span>{autopilotScore}%</span>
+                </div>
+                <p className="muted tiny" style={{ marginTop: 8 }}>
+                  automation score
+                </p>
+              </div>
+              <div style={{ flex: 1 }}>
+                <p className="muted">{state.budgets.length} budgets · {state.goals.length} goals · {state.txns.length} txns tracked</p>
+                <div className="progress-track" style={{ marginTop: 12 }}>
+                  <div className="progress-fill" style={{ width: `${autopilotScore}%` }} />
+                </div>
+                <div className="chips-inline">
+                  {scenarioPlays.map((play) => (
+                    <button key={play.label}>{play.label}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card pad">
+            <div className="title">Top categories</div>
+            {topCats.length ? (
+              <div className="timeline-grid">
+                {topCats.map(([cat, value]) => (
+                  <div key={cat} className="timeline-row">
+                    <div>
+                      <strong>{cat}</strong>
+                      <p className="muted tiny" style={{ marginTop: 4 }}>
+                        {((Number(value) / Math.max(1, spend)) * 100).toFixed(1)}% of spend
+                      </p>
+                    </div>
+                    <div style={{ width: "60%" }}>
+                      <div className="progress-track">
+                        <div className="progress-fill" style={{ width: `${Math.min(100, (Number(value) / Math.max(1, spend)) * 100)}%` }} />
+                      </div>
+                    </div>
+                    <span>${Number(value).toFixed(0)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="muted">No data yet. Add transactions!</div>
+            )}
           </div>
         </div>
-        <div className="card pad">
-          <div className="title">Top 5 categories</div>
-          {topCats.length ? topCats.map(([c,v])=> (
-            <div key={c} style={{display:'grid', gridTemplateColumns:'120px 1fr 60px', gap:8, alignItems:'center', margin:'8px 0'}}>
-              <div className="muted">{c}</div>
-              <div style={{background:'#0b1324', border:'1px solid #26334a', borderRadius:12, overflow:'hidden'}}>
-                <div style={{height:10, width:`${Math.min(100, v/spend*100)}%`, background:'linear-gradient(180deg,#22c55e,#16a34a)'}} />
-              </div>
-              <div style={{textAlign:'right'}}>${Number(v).toFixed(0)}</div>
-            </div>
-          )) : <div className="muted">No data yet. Add transactions!</div>}
-        
-        </div>
-        <div className="card pad">
-          <div className="title">Anomalies</div>
-          {detectAnomalies(state.txns).length ? detectAnomalies(state.txns).map((a,i)=> (
-            <div key={i} className="muted" style={{margin:'6px 0'}}>
-              ⚠️ <b>Spending spike</b> in {a.month}: ${a.current.toFixed(0)} vs avg ${a.avgPrev.toFixed(0)} (last 3 mo)
-            </div>
-          )) : <div className="muted">No anomalies detected.</div>}
+
+        <div className="page-stack">
+          <div className="card pad">
+            <div className="title">Live feed</div>
+            <ul className="feed">
+              {latestTxns.length ? (
+                latestTxns.map((t) => (
+                  <li key={t.id}>
+                    <strong>{t.description}</strong>
+                    <span>
+                      {t.category} · {t.date}
+                    </span>
+                    <span className={t.amount < 0 ? "status-negative" : "status-positive"}>
+                      {t.amount < 0 ? "-" : "+"}${Math.abs(t.amount).toFixed(2)}
+                    </span>
+                  </li>
+                ))
+              ) : (
+                <li className="muted">Your latest transactions will land here.</li>
+              )}
+            </ul>
+          </div>
+
+          <div className="card pad">
+            <div className="title">Budgets watchlist</div>
+            {budgetsAtRisk.length ? (
+              budgetsAtRisk.map((b) => (
+                <div key={b.id} style={{ marginBottom: 16 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <strong>{b.category}</strong>
+                    <span className={b.pct >= 100 ? "status-negative" : "status-positive"}>{b.pct}%</span>
+                  </div>
+                  <div className="progress-track" style={{ marginTop: 6 }}>
+                    <div className="progress-fill" style={{ width: `${Math.min(100, b.pct)}%` }} />
+                  </div>
+                  <p className="muted tiny" style={{ marginTop: 4 }}>
+                    ${b.actual.toFixed(0)} of ${b.limit.toFixed(0)} used
+                  </p>
+                </div>
+              ))
+            ) : (
+              <div className="muted">All clear for this month.</div>
+            )}
+          </div>
+
+          <div className="card pad">
+            <div className="title">AI anomalies</div>
+            {anomalies.length ? (
+              anomalies.map((a, i) => (
+                <div key={i} className="callout-strong" style={{ marginBottom: 12 }}>
+                  <strong>{a.month}</strong>
+                  <p className="muted" style={{ marginTop: 6 }}>
+                    Spending spike ${a.current.toFixed(0)} vs avg ${a.avgPrev.toFixed(0)} · {a.diff.toFixed(0)} swing
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p className="muted">No anomalies detected.</p>
+            )}
+          </div>
         </div>
       </div>
     </section>
   );
 }
 
-function Kpi({label, value}:{label:string, value:string}){
+function Kpi({ label, value, trend }: { label: string; value: string; trend: string }) {
   return (
-    <div className="card pad" style={{background:'linear-gradient(180deg, rgba(34,197,94,.08), rgba(12,25,40,.35))'}}>
-      <div className="muted">{label}</div>
-      <div style={{fontWeight:800, fontSize:24}}>{value}</div>
+    <div className="stat-card">
+      <span className="label">{label}</span>
+      <div className="value">{value}</div>
+      <div className="trend">{trend}</div>
     </div>
   );
 }
