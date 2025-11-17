@@ -1,6 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import OpenAI from 'openai';
-import { concepts } from '../../shared/concepts';
 
 type State = {
   txns?: { date: string; description: string; category: string; amount: number }[];
@@ -61,7 +60,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const kpis = analyze(parsed);
-
     const apiKey = process.env.OPENAI_API_KEY;
 
     // If there is no API key, always use the offline fallback
@@ -70,7 +68,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({
         reply,
         extras: buildExtras(reply),
-        insights: { kpis, anomalies: [], opportunities: [], actionItems: ['Add budgets', 'Automate savings', 'Review quarterly'] },
+        insights: {
+          kpis,
+          anomalies: [],
+          opportunities: [],
+          actionItems: ['Add budgets', 'Automate savings', 'Review quarterly'],
+        },
       });
     }
 
@@ -91,11 +94,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         temperature: 0.2,
       });
 
-      reply =
-        response.choices?.[0]?.message?.content?.trim() ||
-        fallbackReply(kpis);
+      reply = response.choices?.[0]?.message?.content?.trim() || fallbackReply(kpis);
     } catch (apiError) {
-      // If the OpenAI call fails for any reason, log it and fall back gracefully
       console.error('OpenAI error in InvestMate handler:', apiError);
       reply = fallbackReply(kpis);
     }
@@ -107,9 +107,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (err) {
     console.error('Unexpected error in InvestMate AI handler:', err);
+
     // Last-resort fallback
+    const safeReply =
+      'Snapshot:\n- I had trouble reading your data, but we can still talk through your plan.\n' +
+      'Insights:\n- Focus on tracking your biggest 2–3 categories.\n' +
+      'Next actions:\n- Add or update your budgets, then ask me again.';
+
     return res.status(200).json({
-      reply: 'Snapshot:\n- I had trouble reading your data, but we can still talk through your plan.\nInsights:\n- Focus on tracking your biggest 2–3 categories.\nNext actions:\n- Add or update your budgets, then ask me again.',
+      reply: safeReply,
       extras: buildExtras('Focus on tracking your biggest 2–3 categories and updating your budgets.'),
       insights: { kpis: { income: 0, spend: 0, savingsRate: 0 }, anomalies: [], opportunities: [], actionItems: [] },
     });
@@ -121,9 +127,9 @@ function buildExtras(text: string) {
   const tags = Array.from(
     new Set(
       (lower.match(/\b(savings|budget|etf|dca|invest|cash|debt|risk|allocation|goal|expense)\b/g) || []).map((tag) =>
-        tag.toLowerCase()
-      )
-    )
+        tag.toLowerCase(),
+      ),
+    ),
   );
 
   const riskLevel = /conservative|cash|treasury/.test(lower)
@@ -134,10 +140,8 @@ function buildExtras(text: string) {
 
   const nextActions = Array.from(new Set((text.match(/(?<=-\s)(.*?)(?=\n|$)/g) || []).slice(-3)));
 
-  const relatedConcepts = concepts.filter((concept) => {
-    const needles = [concept.term, ...(concept.aliases || [])].map((term) => term.toLowerCase());
-    return needles.some((term) => lower.includes(term));
-  });
+  // TEMP: don’t use shared/concepts on the server to avoid module-load crashes
+  const relatedConcepts: any[] = [];
 
   return { tags, riskLevel, nextActions, concepts: relatedConcepts };
 }
