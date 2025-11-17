@@ -3,7 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import OpenAI from "openai";
 import {
-  fetchFinnhubCandles,
+  fetchFinnhubHistory,
   fetchFinnhubETF,
   fetchFinnhubQuote,
   FinnhubError,
