@@ -178,7 +178,7 @@ export default function AIChat() {
       if (data.extras) setExtras(data.extras);
       if (data.insights?.kpis) setKpis(data.insights.kpis);
 
-      logChat({ question: msg, answer: data.reply });
+      logChat({ month: currentMonth, question: msg, answer: data.reply });
       setStatus("Answered • " + new Date().toLocaleTimeString());
     } catch (e) {
       console.error("AI chat error", e);
