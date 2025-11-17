@@ -4,10 +4,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/components/layout/AppLayout";
 import InvestmentForm from "@/components/investments/InvestmentForm";
+import { HoldingRow } from "@/components/investments/HoldingRow";
+import { MarketPulse } from "@/components/investments/MarketPulse";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Plus, TrendingUp, TrendingDown, PieChart } from "lucide-react";
+import { Plus, TrendingUp, PieChart } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
@@ -97,15 +98,6 @@ export default function Investments() {
     }
   };
 
-  const getTypeIcon = (type: string) => {
-    const samplePerformance = Math.random() > 0.5;
-    return samplePerformance ? (
-      <TrendingUp className="w-4 h-4 text-emerald-400" />
-    ) : (
-      <TrendingDown className="w-4 h-4 text-red-400" />
-    );
-  };
-
   return (
     <AppLayout>
       <main className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -177,6 +169,8 @@ export default function Investments() {
           </Card>
         </div>
 
+        <MarketPulse />
+
         {/* Investments List */}
         {investmentsLoading ? (
           <div className="flex items-center justify-center py-12">
@@ -206,50 +200,9 @@ export default function Investments() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {(investments || []).map((investment: any) => {
-                  const currentValue = parseFloat(investment.quantity) * parseFloat(investment.costBasis);
-                  
-                  return (
-                    <div 
-                      key={investment.id}
-                      data-testid={`row-investment-${investment.id}`}
-                      className="flex items-center justify-between py-4 px-4 bg-slate-700/30 rounded-lg hover:bg-slate-700/50 transition-colors"
-                    >
-                      <div className="flex items-center space-x-4">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
-                          <span className="text-white text-sm font-bold">
-                            {investment.symbol.slice(0, 2)}
-                          </span>
-                        </div>
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <p className="text-white font-medium">
-                              {investment.symbol}
-                            </p>
-                            <Badge className={getTypeColor(investment.type)}>
-                              {investment.type.replace('_', ' ')}
-                            </Badge>
-                          </div>
-                          <p className="text-slate-400 text-sm">
-                            {investment.name || investment.symbol}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="text-right">
-                        <div className="flex items-center space-x-2">
-                          {getTypeIcon(investment.type)}
-                          <p className="text-white font-semibold">
-                            ${currentValue.toFixed(2)}
-                          </p>
-                        </div>
-                        <p className="text-slate-400 text-sm">
-                          {parseFloat(investment.quantity).toFixed(4)} shares
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
+                {(investments || []).map((investment: any) => (
+                  <HoldingRow key={investment.id} investment={investment} badgeClass={getTypeColor(investment.type)} />
+                ))}
               </div>
             </CardContent>
           </Card>

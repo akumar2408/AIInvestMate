@@ -2,6 +2,7 @@ import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 import OpenAI from "openai";
+import { fetchFinnhubETF, fetchFinnhubQuote, FinnhubError } from "../shared/finnhub";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -58,6 +59,32 @@ app.post("/api/ai/chat", async (req, res) => {
   } catch (err) {
     console.error("AI error:", err);
     return res.status(500).json({ error: "AI service unavailable." });
+  }
+});
+
+app.get("/api/stocks/quote", async (req, res) => {
+  try {
+    const quote = await fetchFinnhubQuote(String(req.query.symbol || ""));
+    return res.json(quote);
+  } catch (err) {
+    if (err instanceof FinnhubError) {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
+    console.error("quote handler error", err);
+    return res.status(500).json({ error: "Failed to fetch quote" });
+  }
+});
+
+app.get("/api/stocks/etf", async (req, res) => {
+  try {
+    const payload = await fetchFinnhubETF(String(req.query.symbol || ""));
+    return res.json(payload);
+  } catch (err) {
+    if (err instanceof FinnhubError) {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
+    console.error("etf handler error", err);
+    return res.status(500).json({ error: "Failed to fetch ETF data" });
   }
 });
 
