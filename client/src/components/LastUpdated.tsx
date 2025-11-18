@@ -24,5 +24,5 @@ export function LastUpdated({ timestamp }: { timestamp: number }) {
     return () => window.clearInterval(id);
   }, [timestamp]);
 
-  return <span className="watch-card__updated">Updated {label}</span>;
+  return <span className="text-xs text-slate-400">Updated {label}</span>;
 }
