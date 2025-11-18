@@ -112,6 +112,26 @@ export function MarketPulse() {
           </div>
         ))}
       </div>
+
+      {/* Watchlist grid – fixed height + scroll */}
+      <div className="mt-6 max-h-[420px] overflow-y-auto pr-1">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {tickers.map((symbol) => (
+            <div key={symbol} className="relative group">
+              <MarketCard symbol={symbol} />
+              {!DEFAULT_TICKERS.includes(symbol) && (
+                <button
+                  type="button"
+                  onClick={() => handleRemove(symbol)}
+                  className="absolute -top-2 -right-2 rounded-full border border-slate-800/80 bg-slate-950/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400 opacity-0 transition hover:text-white focus-visible:opacity-100 group-hover:opacity-100"
+                >
+                  remove
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
     </section>
   );
 }
