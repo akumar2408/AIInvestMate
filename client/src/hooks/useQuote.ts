@@ -8,7 +8,7 @@ export type QuoteData = {
   updatedAt: number;
 };
 
-export function useQuote(symbol: string, refreshMs = 30_000) {
+export function useQuote(symbol: string, refreshMs = 60_000) {
   const [data, setData] = useState<QuoteData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
