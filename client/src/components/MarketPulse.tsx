@@ -1,127 +1,119 @@
-// client/src/components/MarketPulse.tsx
-
-import { useState, FormEvent } from "react";
+import { useState } from "react";
 import { MarketCard } from "./MarketCard";
 
 const DEFAULT_TICKERS = ["SPY", "QQQ", "VOO"];
 const QUICK_TICKERS = ["AAPL", "MSFT", "NVDA", "TSLA", "BTC-USD", "GLD"];
 
-// how many symbols to show per “page” in the watchlist
+// How many cards per “page” in the desk
 const PAGE_SIZE = 3;
 
 export function MarketPulse() {
   const [input, setInput] = useState("");
   const [tickers, setTickers] = useState<string[]>(DEFAULT_TICKERS);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1);
+
+  const totalPages = Math.max(1, Math.ceil(tickers.length / PAGE_SIZE));
+  const start = (page - 1) * PAGE_SIZE;
+  const visibleTickers = tickers.slice(start, start + PAGE_SIZE);
 
   const addTicker = (rawSymbol: string) => {
     const symbol = rawSymbol.trim().toUpperCase();
     if (!symbol) return;
 
     setTickers((prev) => {
-      if (prev.includes(symbol)) return prev; // avoid dupes
-      return [...prev, symbol];
+      if (prev.includes(symbol)) return prev;
+      const next = [...prev, symbol];
+      const newTotalPages = Math.max(1, Math.ceil(next.length / PAGE_SIZE));
+      // jump to the last page so the new symbol is visible
+      setPage(newTotalPages);
+      return next;
     });
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     addTicker(input);
     setInput("");
-    setPage(0); // jump back to first page so new symbol is visible
   };
 
   const handleRemove = (symbol: string) => {
-    setTickers((prev) => prev.filter((s) => s !== symbol));
+    setTickers((prev) => {
+      const next = prev.filter((s) => s !== symbol);
+      const newTotalPages = Math.max(1, Math.ceil(next.length / PAGE_SIZE));
+      setPage((current) => Math.min(current, newTotalPages));
+      return next;
+    });
   };
 
   const handleResetDesk = () => {
     setTickers(DEFAULT_TICKERS);
-    setPage(0);
+    setPage(1);
   };
 
-  // ----- pagination math -----
-  const totalPages = Math.max(1, Math.ceil(tickers.length / PAGE_SIZE));
-  const clampedPage = Math.min(page, totalPages - 1);
-  const start = clampedPage * PAGE_SIZE;
-  const end = start + PAGE_SIZE;
-  const visibleTickers = tickers.slice(start, end);
+  const canGoPrev = page > 1;
+  const canGoNext = page < totalPages;
 
   return (
-    <section className="w-full rounded-[32px] border border-slate-800/70 bg-gradient-to-b from-slate-950 via-slate-950/85 to-slate-950/40 p-6 shadow-[0_35px_120px_rgba(2,6,23,0.65)]">
-      {/* Header + description */}
+    <section className="card pad">
+      {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="max-w-md">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500">
-            Market Pulse
-          </p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white">
+        <div>
+          <p className="eyebrow">Market Pulse</p>
+          <h2 className="hero-panel h2 text-[1.7rem] font-semibold leading-tight">
             Realtime view of the macro tape
           </h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="muted">
             Monitor flagship ETFs and layer in the tickers you care about for a quick trading desk snapshot.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-wide">
-          <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/5 px-3 py-1 text-emerald-300">
-            Realtime via Finnhub
-          </span>
-          <span className="inline-flex items-center rounded-full border border-slate-700 px-3 py-1 text-slate-400">
-            Auto-refresh · 60s cadence
-          </span>
+        <div className="flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.18em]">
+          <span className="badge">Realtime via Finnhub</span>
+          <span className="badge subtle">Auto-refresh · 60s cadence</span>
         </div>
       </div>
 
       {/* Stat row */}
-      <div className="mt-6 grid gap-4 rounded-2xl border border-slate-800/60 bg-slate-950/40 p-4 text-sm text-slate-300 sm:grid-cols-3">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
-            Watchlist
-          </p>
-          <p className="mt-2 text-2xl font-semibold text-white">{tickers.length}</p>
-          <p className="text-xs text-slate-500">symbols being tracked</p>
-        </div>
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
-            Default set
-          </p>
-          <p className="mt-2 text-lg font-medium text-white">
+      <div className="market-pulse__stat-grid stat-grid mt-5">
+        <article className="stat-card">
+          <p className="label">Watchlist</p>
+          <div className="value">{tickers.length}</div>
+          <p className="muted tiny">symbols being tracked</p>
+        </article>
+
+        <article className="stat-card">
+          <p className="label">Default set</p>
+          <div className="value text-base md:text-lg">
             {DEFAULT_TICKERS.join(" · ")}
-          </p>
-          <p className="text-xs text-slate-500">broad market coverage</p>
+          </div>
+          <p className="muted tiny">broad market coverage</p>
           <button
             type="button"
             onClick={handleResetDesk}
-            className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-300/80 hover:text-sky-200"
+            className="mt-3 inline-flex items-center rounded-full border border-slate-600/60 bg-slate-900/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em]"
           >
             Reset to default desk
           </button>
-        </div>
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
-            Status
+        </article>
+
+        <article className="stat-card">
+          <p className="label">Status</p>
+          <div className="value status-positive">Synced · smooth</div>
+          <p className="muted tiny">refreshing every 60 seconds</p>
+          <p className="muted tiny mt-2">
+            Page {page} of {totalPages}
           </p>
-          <p className="mt-2 text-lg font-medium text-emerald-300">
-            Synced · smooth
-          </p>
-          <p className="text-xs text-slate-500">refreshing every 60 seconds</p>
-          <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-slate-500">
-            Page {clampedPage + 1} of {totalPages}
-          </p>
-        </div>
+        </article>
       </div>
 
-      {/* Add ticker */}
+      {/* Add ticker form */}
       <form
         onSubmit={handleSubmit}
-        className="mt-6 flex flex-col gap-3 rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4 shadow-inner shadow-black/20 sm:flex-row sm:items-center"
+        className="mt-6 flex flex-col gap-3 rounded-2xl border border-slate-800/70 bg-slate-900/60 p-4 md:flex-row md:items-center"
       >
         <div className="flex-1">
-          <label className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
-            Add ticker
-          </label>
+          <label className="muted tiny block mb-1">Add ticker</label>
           <input
-            className="mt-2 w-full rounded-2xl border border-slate-800/70 bg-slate-900/70 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:border-emerald-400/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+            className="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-4 py-2.5 text-sm text-slate-50 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-500/60"
             placeholder="Type a symbol like AAPL or BTC-USD"
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -129,7 +121,7 @@ export function MarketPulse() {
         </div>
         <button
           type="submit"
-          className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-600 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/40 transition hover:brightness-105"
+          className="glow-btn px-5 py-2.5 text-sm font-semibold"
         >
           Add to watchlist
         </button>
@@ -137,70 +129,71 @@ export function MarketPulse() {
 
       {/* Quick add chips */}
       <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-        <span className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
-          Quick add
-        </span>
+        <span className="muted tiny">Quick add</span>
         {QUICK_TICKERS.map((symbol) => (
           <button
             key={symbol}
             type="button"
-            onClick={() => {
-              addTicker(symbol);
-              setPage(0);
-            }}
-            className="rounded-full border border-slate-700/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-300 transition hover:border-emerald-400/70 hover:text-white"
+            onClick={() => addTicker(symbol)}
+            className="rounded-full border border-slate-600/70 bg-slate-900/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-200 transition hover:border-emerald-400/70 hover:text-emerald-100"
           >
             {symbol}
           </button>
         ))}
       </div>
 
-      {/* Watchlist cards with pagination */}
-      <div className="mt-6 space-y-4">
+      {/* Cards – kept compact with internal scroll + pagination */}
+      <div className="mt-5 space-y-3 max-h-[420px] overflow-y-auto pr-1">
         {visibleTickers.map((symbol) => (
           <div key={symbol} className="relative group">
             <MarketCard symbol={symbol} />
-            {/* Allow removing ANY ticker, including defaults */}
             <button
               type="button"
               onClick={() => handleRemove(symbol)}
-              className="absolute -top-2 -right-2 rounded-full border border-slate-800/80 bg-slate-950/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400 opacity-0 transition hover:text-white focus-visible:opacity-100 group-hover:opacity-100"
+              className="absolute -top-2 -right-2 rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400 opacity-0 shadow-sm transition group-hover:opacity-100 hover:text-slate-100"
             >
               remove
             </button>
           </div>
         ))}
+
+        {visibleTickers.length === 0 && (
+          <p className="muted text-sm">
+            No symbols on this desk yet. Add a ticker above to get started.
+          </p>
+        )}
       </div>
 
       {/* Pager controls */}
-      {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
-          <div>
-            Showing symbols {start + 1}–{Math.min(end, tickers.length)} of{" "}
-            {tickers.length}
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={clampedPage === 0}
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              className="rounded-full border border-slate-700/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] disabled:opacity-40 disabled:cursor-not-allowed hover:border-emerald-400/70 hover:text-white"
-            >
-              Prev
-            </button>
-            <button
-              type="button"
-              disabled={clampedPage >= totalPages - 1}
-              onClick={() =>
-                setPage((p) => Math.min(totalPages - 1, p + 1))
-              }
-              className="rounded-full border border-slate-700/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] disabled:opacity-40 disabled:cursor-not-allowed hover:border-emerald-400/70 hover:text-white"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
+      <div className="mt-4 flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-slate-500">
+        <button
+          type="button"
+          disabled={!canGoPrev}
+          onClick={() => canGoPrev && setPage((p) => p - 1)}
+          className={`rounded-full border px-3 py-1 ${
+            canGoPrev
+              ? "border-slate-600 hover:border-emerald-400 hover:text-emerald-200"
+              : "border-slate-800 opacity-40 cursor-not-allowed"
+          }`}
+        >
+          Prev
+        </button>
+        <span>
+          Page {page} of {totalPages}
+        </span>
+        <button
+          type="button"
+          disabled={!canGoNext}
+          onClick={() => canGoNext && setPage((p) => p + 1)}
+          className={`rounded-full border px-3 py-1 ${
+            canGoNext
+              ? "border-slate-600 hover:border-emerald-400 hover:text-emerald-200"
+              : "border-slate-800 opacity-40 cursor-not-allowed"
+          }`}
+        >
+          Next
+        </button>
+      </div>
     </section>
   );
 }
