@@ -1,24 +1,35 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MarketCard } from "./MarketCard";
 
 const DEFAULT_TICKERS = ["SPY", "QQQ", "VOO"];
 const QUICK_TICKERS = ["AAPL", "MSFT", "NVDA", "TSLA", "BTC-USD", "GLD"];
 
-const PAGE_SIZE = 6; // how many symbols per “page” in the grid
+// how many symbols to show per "page"
+const PAGE_SIZE = 3;
 
 export function MarketPulse() {
   const [input, setInput] = useState("");
   const [tickers, setTickers] = useState<string[]>(DEFAULT_TICKERS);
   const [page, setPage] = useState(0);
 
+  // Ensure the current page is always valid when tickers change
+  useEffect(() => {
+    const maxPage = Math.max(0, Math.ceil(tickers.length / PAGE_SIZE) - 1);
+    if (page > maxPage) {
+      setPage(maxPage);
+    }
+  }, [tickers, page]);
+
   const addTicker = (rawSymbol: string) => {
     const symbol = rawSymbol.trim().toUpperCase();
     if (!symbol) return;
-    setTickers(prev => {
-      if (prev.includes(symbol)) return prev;
-      return [...prev, symbol];
-    });
-    setPage(0); // jump back to first page so new symbol is visible
+    if (!tickers.includes(symbol)) {
+      setTickers((prev) => [...prev, symbol]);
+      // jump to the last page so the new symbol is visible
+      const nextLength = tickers.length + 1;
+      const nextPage = Math.ceil(nextLength / PAGE_SIZE) - 1;
+      setPage(nextPage);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -28,20 +39,23 @@ export function MarketPulse() {
   };
 
   const handleRemove = (symbol: string) => {
-    setTickers(prev => prev.filter(s => s !== symbol));
-    setPage(prev => Math.max(0, prev - 1));
+    // don’t allow deleting the very last ticker
+    setTickers((prev) => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((s) => s !== symbol);
+    });
   };
 
   const totalPages = Math.max(1, Math.ceil(tickers.length / PAGE_SIZE));
-  const clampedPage = Math.min(page, totalPages - 1);
-  const start = clampedPage * PAGE_SIZE;
-  const visibleTickers = tickers.slice(start, start + PAGE_SIZE);
+  const start = page * PAGE_SIZE;
+  const end = start + PAGE_SIZE;
+  const pageTickers = tickers.slice(start, end);
 
   return (
     <section className="w-full rounded-3xl border border-slate-800/70 bg-gradient-to-b from-slate-950 via-slate-950/80 to-slate-950/40 p-6 shadow-[0_35px_120px_rgba(2,6,23,0.65)]">
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="max-w-md">
+        <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500">
             Market Pulse
           </p>
@@ -49,7 +63,8 @@ export function MarketPulse() {
             Realtime view of the macro tape
           </h2>
           <p className="mt-1 text-sm text-slate-400">
-            Monitor flagship ETFs and layer in the tickers you care about for a quick trading desk snapshot.
+            Monitor flagship ETFs and layer in the tickers you care about for a quick trading
+            desk snapshot.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-wide">
@@ -62,7 +77,7 @@ export function MarketPulse() {
         </div>
       </div>
 
-      {/* Summary row */}
+      {/* Summary stats row */}
       <div className="mt-6 grid gap-4 rounded-2xl border border-slate-800/60 bg-slate-950/40 p-4 text-sm text-slate-300 sm:grid-cols-3">
         <div>
           <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Watchlist</p>
@@ -81,7 +96,7 @@ export function MarketPulse() {
         </div>
       </div>
 
-      {/* Add symbol */}
+      {/* Add ticker form */}
       <form
         onSubmit={handleSubmit}
         className="mt-6 flex flex-col gap-3 rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4 shadow-inner shadow-black/20 sm:flex-row sm:items-center"
@@ -122,54 +137,64 @@ export function MarketPulse() {
         ))}
       </div>
 
-      {/* Watchlist grid (compact, paginated) */}
-      <div className="mt-6 rounded-2xl border border-slate-800/60 bg-slate-950/50 p-4">
-        <div className="flex items-center justify-between text-xs text-slate-500">
-          <span>Desk watchlist</span>
-          <span>
-            Page {clampedPage + 1} / {totalPages}
-          </span>
+      {/* Watchlist cards (paged + capped height) */}
+      <div className="mt-6 space-y-4">
+        <div className="max-h-[420px] space-y-4 overflow-y-auto pr-1">
+          {pageTickers.map((symbol) => (
+            <div key={symbol} className="relative group">
+              <MarketCard symbol={symbol} />
+              <button
+                type="button"
+                onClick={() => handleRemove(symbol)}
+                className="absolute -top-2 -right-2 rounded-full border border-slate-800/80 bg-slate-950/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400 opacity-0 transition hover:text-white focus-visible:opacity-100 group-hover:opacity-100"
+              >
+                remove
+              </button>
+            </div>
+          ))}
         </div>
 
-        <div className="mt-4 max-h-80 overflow-y-auto">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {visibleTickers.map((symbol) => (
-              <div key={symbol} className="relative group">
-                <MarketCard symbol={symbol} />
-                <button
-                  type="button"
-                  onClick={() => handleRemove(symbol)}
-                  className="absolute -top-2 -right-2 rounded-full border border-slate-800/80 bg-slate-950/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400 opacity-0 transition group-hover:opacity-100 hover:text-white"
-                >
-                  remove
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-
+        {/* Pagination controls */}
         {totalPages > 1 && (
-          <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={clampedPage === 0}
-              className="rounded-full border border-slate-700/80 px-3 py-1 font-semibold uppercase tracking-wide disabled:opacity-40"
-            >
-              Prev
-            </button>
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              disabled={clampedPage >= totalPages - 1}
-              className="rounded-full border border-slate-700/80 px-3 py-1 font-semibold uppercase tracking-wide disabled:opacity-40"
-            >
-              Next
-            </button>
+          <div className="flex items-center justify-between text-xs text-slate-400">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className="rounded-full border border-slate-700 px-3 py-1 font-semibold uppercase tracking-[0.15em] disabled:opacity-40"
+              >
+                Prev
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setPage((p) => Math.min(totalPages - 1, p + 1))
+                }
+                disabled={page === totalPages - 1}
+                className="rounded-full border border-slate-700 px-3 py-1 font-semibold uppercase tracking-[0.15em] disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setPage(i)}
+                  className={`h-2 w-2 rounded-full ${
+                    i === page ? "bg-emerald-400" : "bg-slate-700"
+                  }`}
+                  aria-label={`Go to page ${i + 1}`}
+                />
+              ))}
+            </div>
           </div>
         )}
       </div>
     </section>
   );
 }
+
 
