@@ -63,7 +63,8 @@ export function MarketPulse() {
             Realtime view of the macro tape
           </h2>
           <p className="muted">
-            Monitor flagship ETFs and layer in the tickers you care about for a quick trading desk snapshot.
+            Monitor flagship ETFs and layer in the tickers you care about for a
+            quick trading desk snapshot.
           </p>
         </div>
         <div className="market-pulse__badges">
@@ -72,41 +73,61 @@ export function MarketPulse() {
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="market-pulse__controls">
-        <form onSubmit={handleSubmit} className="market-pulse__form">
+      {/* Stat row */}
+      <div className="market-pulse__stats">
+        <article className="pulse-tile">
+          <p className="label">Watchlist</p>
+          <div className="pulse-tile__value">{tickers.length}</div>
+          <p className="muted tiny">symbols being tracked</p>
+        </article>
+
+        <article className="pulse-tile">
+          <p className="label">Default desk</p>
+          <div className="pulse-tile__value text-base md:text-lg">
+            {DEFAULT_TICKERS.join(" · ")}
+          </div>
+          <p className="muted tiny">Broad market coverage</p>
+          <button
+            type="button"
+            onClick={handleResetDesk}
+            className="pulse-tile__reset"
+          >
+            Reset to default desk
+          </button>
+        </article>
+
+        <article className="pulse-tile">
+          <p className="label">Status</p>
+          <div className="pulse-tile__value status-positive">
+            Synced · smooth
+          </div>
+          <p className="muted tiny">
+            Page {page} / {totalPages}
+          </p>
+        </article>
+      </div>
+
+      {/* Add ticker form */}
+      <form onSubmit={handleSubmit} className="market-pulse__form">
+        <label className="watchlist-field">
+          <span>Add ticker</span>
           <input
             id="ticker-input"
             className="market-pulse__input"
-            placeholder="Add ticker e.g. AAPL or BTC-USD"
+            placeholder="Type a symbol like AAPL or BTC-USD"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             aria-label="Add ticker symbol"
           />
-          <button type="submit" className="glow-btn market-pulse__submit">
-            Add
-          </button>
-        </form>
-      </div>
-
-      <div className="market-pulse__meta">
-        <span className="market-pulse__meta-count">{tickers.length} symbols active</span>
-        <div className="market-pulse__meta-actions">
-          <span className="market-pulse__meta-page">
-            {totalPages > 1 ? `Page ${page} · ${totalPages}` : "Single spread"}
-          </span>
-          <button type="button" className="market-pulse__reset" onClick={handleResetDesk}>
-            Reset desk
-          </button>
-        </div>
-      </div>
+        </label>
+        <button type="submit" className="glow-btn market-pulse__submit">
+          Add to watchlist
+        </button>
+      </form>
 
       {/* Quick add chips */}
       <div className="market-pulse__chips">
-        <div className="market-pulse__chip-meta">
-          <span className="muted tiny">Quick add</span>
-          <span className="market-pulse__chip-hint">Drop a trending name</span>
-        </div>
+        <span className="muted tiny">Quick add</span>
         <div className="market-pulse__chip-row">
           {QUICK_TICKERS.map((symbol) => (
             <button
@@ -127,15 +148,24 @@ export function MarketPulse() {
           <div className="market-pulse__grid">
             {visibleTickers.map((symbol) => (
               <div key={symbol} className="market-pulse__card">
-                <MarketCard symbol={symbol} onRemove={() => handleRemove(symbol)} />
+                <MarketCard
+                  symbol={symbol}
+                  onRemove={() => handleRemove(symbol)}
+                />
               </div>
             ))}
           </div>
         ) : (
           <div className="market-pulse__empty">
             <p>No symbols on this desk yet.</p>
-            <p className="muted tiny">Add a ticker above or reset the desk to bring back the defaults.</p>
-            <button type="button" onClick={handleResetDesk} className="market-pulse__reset">
+            <p className="muted tiny">
+              Add a ticker above or reset the desk to bring back the defaults.
+            </p>
+            <button
+              type="button"
+              onClick={handleResetDesk}
+              className="pulse-tile__reset"
+            >
               Reset to default desk
             </button>
           </div>
@@ -145,13 +175,21 @@ export function MarketPulse() {
       {/* Pager controls */}
       {totalPages > 1 && (
         <div className="market-pulse__pagination">
-          <button type="button" disabled={!canGoPrev} onClick={() => canGoPrev && setPage((p) => p - 1)}>
+          <button
+            type="button"
+            disabled={!canGoPrev}
+            onClick={() => canGoPrev && setPage((p) => p - 1)}
+          >
             Prev
           </button>
           <span>
             Page {page} of {totalPages}
           </span>
-          <button type="button" disabled={!canGoNext} onClick={() => canGoNext && setPage((p) => p + 1)}>
+          <button
+            type="button"
+            disabled={!canGoNext}
+            onClick={() => canGoNext && setPage((p) => p + 1)}
+          >
             Next
           </button>
         </div>
