@@ -24,5 +24,16 @@ export function LastUpdated({ timestamp }: { timestamp: number }) {
     return () => window.clearInterval(id);
   }, [timestamp]);
 
-  return <span className="text-xs text-slate-400">Updated {label}</span>;
+  return (
+    <span
+      aria-live="polite"
+      className="inline-flex items-center gap-1.5 rounded-full border border-slate-800/70 bg-slate-950/60 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.25em] text-slate-400"
+    >
+      <span
+        aria-hidden="true"
+        className="h-1.5 w-1.5 rounded-full bg-emerald-400/80 animate-pulse"
+      />
+      Updated {label}
+    </span>
+  );
 }
