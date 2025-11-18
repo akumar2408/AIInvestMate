@@ -87,16 +87,25 @@ export function MarketPulse() {
             Add
           </button>
         </form>
-        <button type="button" className="market-pulse__reset" onClick={handleResetDesk}>
-          Reset desk
-        </button>
+      </div>
+
+      <div className="market-pulse__meta">
+        <span className="market-pulse__meta-count">{tickers.length} symbols active</span>
+        <div className="market-pulse__meta-actions">
+          <span className="market-pulse__meta-page">
+            {totalPages > 1 ? `Page ${page} · ${totalPages}` : "Single spread"}
+          </span>
+          <button type="button" className="market-pulse__reset" onClick={handleResetDesk}>
+            Reset desk
+          </button>
+        </div>
       </div>
 
       {/* Quick add chips */}
       <div className="market-pulse__chips">
         <div className="market-pulse__chip-meta">
           <span className="muted tiny">Quick add</span>
-          <span className="market-pulse__watch-count">{tickers.length} symbols active</span>
+          <span className="market-pulse__chip-hint">Drop a trending name</span>
         </div>
         <div className="market-pulse__chip-row">
           {QUICK_TICKERS.map((symbol) => (
