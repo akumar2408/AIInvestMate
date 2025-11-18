@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { fetchFinnhubETF, FinnhubError } from '../../shared/finnhub';
+import { fetchFinnhubETF, FinnhubError } from './finnhub.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
