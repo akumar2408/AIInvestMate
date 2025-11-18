@@ -4,7 +4,7 @@ import { MarketCard } from "./MarketCard";
 const DEFAULT_TICKERS = ["SPY", "QQQ", "VOO"];
 const QUICK_TICKERS = ["AAPL", "MSFT", "NVDA", "TSLA", "BTC-USD", "GLD"];
 
-// 2-column grid with two rows per “page” keeps the layout compact
+// 2 x 2 grid per “page”
 const PAGE_SIZE = 4;
 
 export function MarketPulse() {
@@ -24,7 +24,7 @@ export function MarketPulse() {
       if (prev.includes(symbol)) return prev;
       const next = [...prev, symbol];
       const newTotalPages = Math.max(1, Math.ceil(next.length / PAGE_SIZE));
-      // jump to the last page so the new symbol is visible
+      // jump to last page so the new symbol is visible
       setPage(newTotalPages);
       return next;
     });
@@ -73,38 +73,25 @@ export function MarketPulse() {
         </div>
       </div>
 
-      {/* Stat row */}
-      <div className="market-pulse__stats">
-        <article className="pulse-tile">
-          <p className="label">Watchlist</p>
-          <div className="pulse-tile__value">{tickers.length}</div>
-          <p className="muted tiny">symbols being tracked</p>
-        </article>
-
-        <article className="pulse-tile">
-          <p className="label">Default desk</p>
-          <div className="pulse-tile__value text-base md:text-lg">
-            {DEFAULT_TICKERS.join(" · ")}
-          </div>
-          <p className="muted tiny">Broad market coverage</p>
-          <button
-            type="button"
-            onClick={handleResetDesk}
-            className="pulse-tile__reset"
-          >
-            Reset to default desk
-          </button>
-        </article>
-
-        <article className="pulse-tile">
-          <p className="label">Status</p>
-          <div className="pulse-tile__value status-positive">
-            Synced · smooth
-          </div>
-          <p className="muted tiny">
-            Page {page} / {totalPages}
-          </p>
-        </article>
+      {/* Compact meta row instead of big tiles */}
+      <div className="market-pulse__meta">
+        <span className="muted tiny">
+          Watchlist · {tickers.length}{" "}
+          {tickers.length === 1 ? "symbol" : "symbols"}
+        </span>
+        <span className="muted tiny">
+          Default desk · {DEFAULT_TICKERS.join(" · ")}
+        </span>
+        <span className="muted tiny">
+          Page {page} / {totalPages}
+        </span>
+        <button
+          type="button"
+          onClick={handleResetDesk}
+          className="market-pulse__meta-reset"
+        >
+          Reset desk
+        </button>
       </div>
 
       {/* Add ticker form */}
@@ -112,7 +99,6 @@ export function MarketPulse() {
         <label className="watchlist-field">
           <span>Add ticker</span>
           <input
-            id="ticker-input"
             className="market-pulse__input"
             placeholder="Type a symbol like AAPL or BTC-USD"
             value={input}
@@ -148,10 +134,8 @@ export function MarketPulse() {
           <div className="market-pulse__grid">
             {visibleTickers.map((symbol) => (
               <div key={symbol} className="market-pulse__card">
-                <MarketCard
-                  symbol={symbol}
-                  onRemove={() => handleRemove(symbol)}
-                />
+                {/* MarketCard owns its own remove button */}
+                <MarketCard symbol={symbol} onRemove={() => handleRemove(symbol)} />
               </div>
             ))}
           </div>
@@ -164,7 +148,7 @@ export function MarketPulse() {
             <button
               type="button"
               onClick={handleResetDesk}
-              className="pulse-tile__reset"
+              className="market-pulse__meta-reset"
             >
               Reset to default desk
             </button>
