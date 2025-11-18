@@ -21,6 +21,7 @@ export function MarketCard({ symbol, label }: MarketCardProps) {
     );
   }
 
+  const price = data?.price != null ? data.price.toFixed(2) : loading ? "…" : "--";
   const change = data?.change ?? 0;
   const changePct = data?.changePercent ?? 0;
   const isUp = change >= 0;
