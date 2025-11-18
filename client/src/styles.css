@@ -863,7 +863,7 @@ body.wizard-active footer {
   cursor: default;
 }
 
-/* small adjustments on narrow screens */
+/* small adjustments on narrow screens so it works better */
 @media (max-width: 900px) {
   .market-header {
     flex-direction: column;
