@@ -55,7 +55,7 @@ export function MarketPulse() {
 
   return (
     <section className="card pad market-pulse">
-      {/* Header */}
+       {/* Header */}
       <div className="market-pulse__header">
         <div>
           <p className="eyebrow">Market Pulse</p>
@@ -73,28 +73,7 @@ export function MarketPulse() {
         </div>
       </div>
 
-      {/* Compact meta row instead of big tiles */}
-      <div className="market-pulse__meta">
-        <span className="muted tiny">
-          Watchlist · {tickers.length}{" "}
-          {tickers.length === 1 ? "symbol" : "symbols"}
-        </span>
-        <span className="muted tiny">
-          Default desk · {DEFAULT_TICKERS.join(" · ")}
-        </span>
-        <span className="muted tiny">
-          Page {page} / {totalPages}
-        </span>
-        <button
-          type="button"
-          onClick={handleResetDesk}
-          className="market-pulse__meta-reset"
-        >
-          Reset desk
-        </button>
-      </div>
-
-      {/* Add ticker form */}
+      {/* Add ticker form starts immediately after header */}
       <form onSubmit={handleSubmit} className="market-pulse__form">
         <label className="watchlist-field">
           <span>Add ticker</span>
@@ -110,6 +89,7 @@ export function MarketPulse() {
           Add to watchlist
         </button>
       </form>
+
 
       {/* Quick add chips */}
       <div className="market-pulse__chips">
