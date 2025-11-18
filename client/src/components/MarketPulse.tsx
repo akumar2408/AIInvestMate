@@ -55,7 +55,7 @@ export function MarketPulse() {
 
   return (
     <section className="card pad market-pulse">
-       {/* Header */}
+      {/* Header */}
       <div className="market-pulse__header">
         <div>
           <p className="eyebrow">Market Pulse</p>
