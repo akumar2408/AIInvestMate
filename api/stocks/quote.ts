@@ -13,8 +13,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'symbol query param required' });
     }
 
-    const payload = await fetchFinnhubQuote(symbol);
-    return res.status(200).json(payload);
+    const quote = await fetchFinnhubQuote(symbol);
+
+    const cleanPayload = {
+      symbol: quote.symbol,
+      price: quote.current,
+      change: quote.change,
+      changePercent: quote.changePct,
+      updatedAt: quote.timestamp ?? Date.now(),
+    };
+
+    return res.status(200).json({
+      ...cleanPayload,
+      current: quote.current,
+      changePct: quote.changePct,
+      open: quote.open,
+      high: quote.high,
+      low: quote.low,
+      prevClose: quote.prevClose,
+      timestamp: quote.timestamp,
+    });
   } catch (err: unknown) {
     if (err instanceof FinnhubError) {
       console.error('FinnhubError in /api/stocks/quote', err.message);
