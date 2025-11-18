@@ -136,12 +136,7 @@ export function Dashboard() {
               <div className="muted">No data yet. Add transactions!</div>
             )}
           </div>
-        </div>
 
-        <div className="page-stack">
-          <div style={{ width: "100%" }}>
-            <MarketPulse />
-          </div>
           <div className="card pad">
             <div className="title">Live feed</div>
             <ul className="feed">
@@ -199,6 +194,12 @@ export function Dashboard() {
             ) : (
               <p className="muted">No anomalies detected.</p>
             )}
+          </div>
+        </div>
+
+        <div className="page-stack">
+          <div style={{ width: "100%" }}>
+            <MarketPulse />
           </div>
         </div>
       </div>
