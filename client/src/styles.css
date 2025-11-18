@@ -97,7 +97,7 @@ section + section { margin-top: 28px; }
   background: radial-gradient(circle at top right, rgba(52, 211, 153, 0.14), transparent 55%);
   opacity: 0;
   transition: opacity 0.35s ease;
-  pointer-events: none;  /* <- added */
+  pointer-events: none;
 }
 .card:hover::before { opacity: 1; }
 .card.pad { padding: 26px; }
@@ -141,9 +141,13 @@ section + section { margin-top: 28px; }
   border-radius: 18px;
   border: 1px solid rgba(148,163,184,.14);
   background: rgba(2,6,23,.55);
-  transition: transform .25s ease, border-color .25s ease;
+  transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
 }
-.stat-card:hover { transform: translateY(-4px); border-color: rgba(110,231,183,.5); }
+.stat-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(110,231,183,.5);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.65);
+}
 .stat-card .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
 .stat-card .value { font-size: 1.6rem; font-weight: 700; margin: 8px 0 4px; }
 .stat-card .trend { font-size: 0.85rem; color: var(--accent); }
@@ -218,7 +222,7 @@ section + section { margin-top: 28px; }
   background: radial-gradient(circle at top, rgba(255,255,255,.08), transparent 45%);
   opacity:0;
   transition: opacity .3s ease;
-  pointer-events: none;  /* <- added */
+  pointer-events: none;
 }
 .card:hover .glimmer { opacity:.6; }
 
@@ -391,7 +395,7 @@ body.wizard-active footer {
   inset:0;
   background: radial-gradient(circle at 20% 0%, rgba(255,255,255,.15), transparent 50%);
   opacity:.6;
-  pointer-events: none;  /* <- added */
+  pointer-events: none;
 }
 .glow-card h3 { margin: 6px 0 0; font-size: 2rem; }
 .sparkline { width: 120px; height: 60px; background: linear-gradient(180deg, rgba(110,231,183,.3), transparent); border-radius: 16px; mask: radial-gradient(circle at 50% 50%, #000 60%, transparent 72%); }
@@ -446,15 +450,15 @@ body.wizard-active footer {
 .composer { display:flex; gap:10px; margin-top: 16px; }
 .input { flex:1; padding: 13px 16px; border: 1px solid rgba(38,50,71,.9); border-radius: 16px; background: rgba(6,11,23,.8); color:#e2e8f0; outline: none; box-shadow: inset 0 1px 0 rgba(255,255,255,.02); }
 .input:focus { border-color: rgba(110,231,183,.6); box-shadow: 0 0 0 1px rgba(110,231,183,.25); }
-.btn { padding: 12px 18px; border-radius: 16px; border: 1px solid rgba(36,74,58,.8); background: linear-gradient(120deg, #0ea5e9, #34d399); color: #051b1e; font-weight: 700; box-shadow: 0 12px 20px rgba(14,165,233,.35); cursor:pointer; transition: transform .2s ease; }
+.btn { padding: 12px 18px; border-radius: 16px; border: 1px solid rgba(36,74,58。.8); background: linear-gradient(120deg, #0ea5e9, #34d399); color: #051b1e; font-weight: 700; box-shadow: 0 12px 20px rgba(14,165,233,.35); cursor:pointer; transition: transform .2s ease; }
 .btn:hover:not(:disabled) { transform: translateY(-1px); }
 .btn:disabled { opacity:.6; cursor:not-allowed; }
-.ghost { background: rgba(15,23,42,.7); border:1px solid rgba(38,51,74,.8); color:#cbd5e1; font-weight:600; border-radius: 14px; padding: 11px 16px; cursor:pointer; transition: all .2s ease; }
-.ghost:hover { background: rgba(15,23,42,.95); }
+.ghost { background: rgba(15,23,42,.7); border:1px solid rgba(38,51,74。.8); color:#cbd5e1; font-weight:600; border-radius: 14px; padding: 11px 16px; cursor:pointer; transition: all .2s ease; }
+.ghost:hover { background: rgba(15,23,42。.95); }
 
 .suggest { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
-.chip { border-radius:14px; padding:9px 12px; border:1px solid rgba(38,51,74,.9); color:#cbd5e1; background:rgba(11,19,36,.9); cursor:pointer; font-size: 13px; transition: transform .2s ease, border-color .2s ease; }
-.chip:hover { background:#0f1b34; border-color: rgba(125,211,252,.4); transform: translateY(-1px); }
+.chip { border-radius:14px; padding:9px 12px; border:1px solid rgba(38,51,74。.9); color:#cbd5e1; background:rgba(11,19,36。.9); cursor:pointer; font-size: 13px; transition: transform .2s ease, border-color .2s ease; }
+.chip:hover { background:#0f1b34; border-color: rgba(125,211,252。.4); transform: translateY(-1px); }
 
 .typing { display:inline-block; overflow:hidden; white-space:nowrap; animation: typing 1.2s steps(28,end) infinite alternate; color:#9ca3af; }
 @keyframes typing { from { width: 40px } to { width: 120px } }
@@ -505,23 +509,24 @@ body.wizard-active footer {
   gap: 8px;
 }
 
+/* more compact, auto-fit stat row */
 .market-pulse__stat-grid {
-  margin-top: 16px;
+  margin-top: 12px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
 }
 
 .market-pulse__stat {
   border-radius: 16px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   background: rgba(2, 6, 23, 0.8);
-  padding: 14px 16px;
+  padding: 12px 14px;
 }
 
 .market-pulse__stat-value {
-  margin-top: 6px;
-  font-size: 1.4rem;
+  margin-top: 4px;
+  font-size: 1.25rem;
   font-weight: 700;
 }
 
@@ -629,6 +634,13 @@ body.wizard-active footer {
   flex-direction: column;
   gap: 14px;
   box-shadow: 0 18px 40px rgba(2, 6, 23, 0.75);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.watch-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(110, 231, 183, 0.7);
+  box-shadow: 0 22px 40px rgba(15, 23, 42, 0.9);
 }
 
 .watch-card.offline {
@@ -693,10 +705,12 @@ body.wizard-active footer {
   color: #fecaca;
 }
 
-@media (max-width: 900px) {
-  .market-pulse__stat-grid {
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  }
+/* two-column watchlist grid you can use instead of a long column */
+.market-watchlist-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
 }
 
 /* ---- Market Pulse layout polish ---- */
@@ -807,16 +821,6 @@ body.wizard-active footer {
   cursor: default;
 }
 
-.market-watchlist-grid {
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  max-height: 360px;
-  overflow: auto;
-  padding-right: 4px;
-}
-
 .market-watchlist-row {
   position: relative;
 }
@@ -887,6 +891,19 @@ body.wizard-active footer {
   .watchlist-add-btn {
     width: 100%;
     justify-content: center;
+  }
+
+  .market-pulse__stat-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
+
+/* optional reduced-motion support so the plasma / aurora don't overwhelm */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
