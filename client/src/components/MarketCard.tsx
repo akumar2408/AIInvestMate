@@ -4,9 +4,10 @@ import { useQuote } from "@/hooks/useQuote";
 type MarketCardProps = {
   symbol: string;
   label?: string;
+  onRemove?: () => void;
 };
 
-export function MarketCard({ symbol, label }: MarketCardProps) {
+export function MarketCard({ symbol, label, onRemove }: MarketCardProps) {
   const { data, loading, error } = useQuote(symbol);
 
   const hasQuote = data != null;
@@ -25,6 +26,11 @@ export function MarketCard({ symbol, label }: MarketCardProps) {
 
   return (
     <article className={`watch-card ${error ? "offline" : ""}`}>
+      {onRemove && (
+        <button type="button" className="watch-card__remove" onClick={onRemove} aria-label={`Remove ${symbol}`}>
+          Remove
+        </button>
+      )}
       <div className="watch-card__head">
         <div>
           <p className="eyebrow tiny">{symbol}</p>

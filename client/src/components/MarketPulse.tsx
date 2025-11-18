@@ -63,7 +63,8 @@ export function MarketPulse() {
             Realtime view of the macro tape
           </h2>
           <p className="muted">
-            Monitor flagship ETFs and layer in the tickers you care about for a quick trading desk snapshot.
+            Monitor flagship ETFs and layer in the tickers you care about for a
+            quick trading desk snapshot.
           </p>
         </div>
         <div className="market-pulse__badges">
@@ -86,15 +87,23 @@ export function MarketPulse() {
             {DEFAULT_TICKERS.join(" · ")}
           </div>
           <p className="muted tiny">Broad market coverage</p>
-          <button type="button" onClick={handleResetDesk} className="pulse-tile__reset">
+          <button
+            type="button"
+            onClick={handleResetDesk}
+            className="pulse-tile__reset"
+          >
             Reset to default desk
           </button>
         </article>
 
         <article className="pulse-tile">
           <p className="label">Status</p>
-          <div className="pulse-tile__value status-positive">Synced · smooth</div>
-          <p className="muted tiny">Page {page} / {totalPages}</p>
+          <div className="pulse-tile__value status-positive">
+            Synced · smooth
+          </div>
+          <p className="muted tiny">
+            Page {page} / {totalPages}
+          </p>
         </article>
       </div>
 
@@ -103,10 +112,12 @@ export function MarketPulse() {
         <label className="watchlist-field">
           <span>Add ticker</span>
           <input
+            id="ticker-input"
             className="market-pulse__input"
             placeholder="Type a symbol like AAPL or BTC-USD"
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            aria-label="Add ticker symbol"
           />
         </label>
         <button type="submit" className="glow-btn market-pulse__submit">
@@ -137,23 +148,24 @@ export function MarketPulse() {
           <div className="market-pulse__grid">
             {visibleTickers.map((symbol) => (
               <div key={symbol} className="market-pulse__card">
-                <MarketCard symbol={symbol} />
-                <button
-                  type="button"
-                  onClick={() => handleRemove(symbol)}
-                  className="market-pulse__remove"
-                  aria-label={`Remove ${symbol}`}
-                >
-                  Remove
-                </button>
+                <MarketCard
+                  symbol={symbol}
+                  onRemove={() => handleRemove(symbol)}
+                />
               </div>
             ))}
           </div>
         ) : (
           <div className="market-pulse__empty">
             <p>No symbols on this desk yet.</p>
-            <p className="muted tiny">Add a ticker above or reset the desk to bring back the defaults.</p>
-            <button type="button" onClick={handleResetDesk} className="pulse-tile__reset">
+            <p className="muted tiny">
+              Add a ticker above or reset the desk to bring back the defaults.
+            </p>
+            <button
+              type="button"
+              onClick={handleResetDesk}
+              className="pulse-tile__reset"
+            >
               Reset to default desk
             </button>
           </div>
@@ -163,13 +175,21 @@ export function MarketPulse() {
       {/* Pager controls */}
       {totalPages > 1 && (
         <div className="market-pulse__pagination">
-          <button type="button" disabled={!canGoPrev} onClick={() => canGoPrev && setPage((p) => p - 1)}>
+          <button
+            type="button"
+            disabled={!canGoPrev}
+            onClick={() => canGoPrev && setPage((p) => p - 1)}
+          >
             Prev
           </button>
           <span>
             Page {page} of {totalPages}
           </span>
-          <button type="button" disabled={!canGoNext} onClick={() => canGoNext && setPage((p) => p + 1)}>
+          <button
+            type="button"
+            disabled={!canGoNext}
+            onClick={() => canGoNext && setPage((p) => p + 1)}
+          >
             Next
           </button>
         </div>
