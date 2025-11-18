@@ -143,7 +143,7 @@ export function MarketPulse() {
       </div>
 
       {/* Cards – kept compact with internal scroll + pagination */}
-      <div className="mt-5 space-y-3 max-h-[420px] overflow-y-auto pr-1">
+      <div className="mt-5 market-watchlist-grid">
         {visibleTickers.map((symbol) => (
           <div key={symbol} className="relative group">
             <MarketCard symbol={symbol} />
