@@ -1,6 +1,6 @@
 // api/stocks/history.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { fetchFinnhubHistory, FinnhubError } from './finnhub';
+import { fetchFinnhubHistory, FinnhubError } from './finnhub.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
