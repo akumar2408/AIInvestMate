@@ -477,3 +477,226 @@ body.wizard-active footer {
   .pulse-grid { grid-template-columns: repeat(auto-fit,minmax(120px,1fr)); }
 }
 
+/* --- Market pulse & watchlist --- */
+
+.market-pulse {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.market-pulse__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.market-pulse__headline {
+  margin: 6px 0 8px;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.market-pulse__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.market-pulse__stat-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.market-pulse__stat {
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(2, 6, 23, 0.8);
+  padding: 14px 16px;
+}
+
+.market-pulse__stat-value {
+  margin-top: 6px;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.market-pulse__form {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.market-pulse__form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.market-pulse__input {
+  flex: 1;
+  min-width: 220px;
+  padding: 11px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(51, 65, 85, 0.9);
+  background: rgba(8, 13, 24, 0.9);
+  color: #e2e8f0;
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.market-pulse__input::placeholder {
+  color: rgba(148, 163, 184, 0.85);
+}
+
+.market-pulse__quick-add {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.market-pulse__chip {
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  padding: 6px 10px;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: rgba(15, 23, 42, 0.9);
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+.market-pulse__chip:hover {
+  border-color: rgba(52, 211, 153, 0.7);
+  background: rgba(6, 78, 59, 0.6);
+  transform: translateY(-1px);
+}
+
+.watch-grid {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.watch-grid__item {
+  position: relative;
+}
+
+.market-pulse__remove {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  background: rgba(3, 7, 18, 0.95);
+  color: #cbd5e1;
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+.watch-grid__item:hover .market-pulse__remove {
+  opacity: 1;
+  transform: translateY(-1px);
+  border-color: rgba(248, 250, 252, 0.8);
+}
+
+/* quote card */
+
+.watch-card {
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background:
+    radial-gradient(circle at top left, rgba(52, 211, 153, 0.16), transparent 60%),
+    rgba(15, 23, 42, 0.96);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 18px 40px rgba(2, 6, 23, 0.75);
+}
+
+.watch-card.offline {
+  border-color: rgba(248, 113, 113, 0.7);
+  background:
+    radial-gradient(circle at top left, rgba(248, 113, 113, 0.22), transparent 60%),
+    rgba(15, 23, 42, 0.96);
+}
+
+.watch-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.watch-card__label {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.watch-card__status {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.watch-card__body {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.watch-card__price {
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+.watch-card__change {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.watch-card__change.up {
+  color: #4ade80;
+}
+
+.watch-card__change.down {
+  color: #f97373;
+}
+
+.watch-card__change.offline {
+  color: #fecaca;
+}
+
+.watch-card__error {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  color: #fecaca;
+}
+
+@media (max-width: 900px) {
+  .market-pulse__stat-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+}
+
+
