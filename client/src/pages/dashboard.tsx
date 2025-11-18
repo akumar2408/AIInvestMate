@@ -1,10 +1,6 @@
 import React, { useMemo } from "react";
 import { useStore, monthKey, detectAnomalies } from "../state/store";
-import { useStockQuote, useStockHistory } from "../hooks/useStockData";
-import { StockSparkline } from "@/components/charts/Sparkline";
-
-const MARKET_SYMBOLS = ["SPY", "QQQ", "VOO"];
-const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+import { MarketPulse } from "@/components/MarketPulse";
 
 export function Dashboard() {
   const { state } = useStore();
@@ -143,7 +139,9 @@ export function Dashboard() {
         </div>
 
         <div className="page-stack">
-          <MarketPulseStrip symbols={MARKET_SYMBOLS} />
+          <div style={{ width: "100%" }}>
+            <MarketPulse />
+          </div>
           <div className="card pad">
             <div className="title">Live feed</div>
             <ul className="feed">
@@ -216,79 +214,4 @@ function Kpi({ label, value, trend }: { label: string; value: string; trend: str
       <div className="trend">{trend}</div>
     </div>
   );
-}
-
-type MarketPulseStripProps = {
-  symbols?: string[];
-};
-
-function MarketPulseStrip({ symbols = MARKET_SYMBOLS }: MarketPulseStripProps) {
-  return (
-    <div className="card pad">
-      <div className="title">
-        Market pulse
-        <span className="muted tiny">Realtime data via Finnhub</span>
-      </div>
-      <div className="market-grid">
-        {symbols.map((symbol) => (
-          <MarketTicker key={symbol} symbol={symbol} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-type MarketTickerProps = {
-  symbol: string;
-};
-
-function MarketTicker({ symbol }: MarketTickerProps) {
-  const { data, loading, error } = useStockQuote(symbol, { refreshMs: 60_000 });
-  const { data: history } = useStockHistory(symbol, { range: "1w", refreshMs: 5 * 60_000 });
-  const change = data?.change ?? 0;
-  const changePct = data?.changePct ?? 0;
-  const historyPoints = history?.points ?? [];
-  const historyTrend = historyPoints.length >= 2 ? historyPoints[historyPoints.length - 1].close - historyPoints[0].close : null;
-  const trendPositive = historyTrend != null ? historyTrend >= 0 : change >= 0;
-
-  return (
-    <div className="market-card" aria-live="polite">
-      <div className="market-symbol">
-        <strong>{symbol}</strong>
-        <span className="muted tiny">{data?.timestamp ? `Updated ${formatTime(data.timestamp)}` : "Live"}</span>
-      </div>
-      <div className="market-price-row">
-        <span className="market-price">
-          {data ? currency.format(data.current) : loading ? "…" : "—"}
-        </span>
-        <span className={`market-change ${trendPositive ? "pos" : "neg"}`}>
-          {data
-            ? `${trendPositive ? "+" : ""}${change.toFixed(2)} (${trendPositive ? "+" : ""}${changePct.toFixed(2)}%)`
-            : error
-            ? "Unavailable"
-            : "Awaiting"}
-        </span>
-      </div>
-      <div style={{ marginTop: 8 }}>
-        <StockSparkline points={historyPoints} trendPositive={trendPositive} height={32} />
-        {historyTrend != null && (
-          <p className={`muted tiny ${trendPositive ? "pos" : "neg"}`}>
-            1w trend {trendPositive ? "+" : ""}{historyTrend.toFixed(2)}
-          </p>
-        )}
-      </div>
-      {error && (
-        <p className="muted tiny" style={{ color: "#fb7185" }}>
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function formatTime(timestamp: number) {
-  return new Date(timestamp).toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-  });
 }
