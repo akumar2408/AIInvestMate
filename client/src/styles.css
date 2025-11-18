@@ -495,12 +495,13 @@ section + section {
   border-radius: 18px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   background: rgba(2, 6, 23, 0.65);
-  padding: 16px;
+  padding: 16px 18px 14px;
   min-height: 120px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
+  overflow: hidden;        /* 🔑 keeps anything (like % change) inside */
 }
 
 .market-symbol {
@@ -523,8 +524,13 @@ section + section {
 }
 
 .market-change {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 600;
+  text-align: right;
+  white-space: nowrap;      /* keep "-0.89 (-0.22%)" on one line */
+  margin-top: 4px;
+  align-self: flex-end;     /* pin to bottom-right of the card */
+  opacity: 0.9;
 }
 
 .market-change.pos {
@@ -532,7 +538,7 @@ section + section {
 }
 
 .market-change.neg {
-  color: #f87171;
+  color: #f97373;
 }
 
 .market-card p {
@@ -1992,8 +1998,9 @@ body.wizard-active footer {
 }
 
 .market-pulse__grid {
+  /* one long card per row */
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
 
@@ -2161,10 +2168,12 @@ body.wizard-active footer {
 }
 
 .watch-card__change {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 600;
   text-align: right;
-  white-space: nowrap; /* keeps "-18.90 (-3.72%)" on one line */
+  white-space: nowrap;
+  margin-top: 4px;
+  align-self: flex-end;
 }
 
 .watch-card__change.up {
@@ -2231,10 +2240,6 @@ body.wizard-active footer {
   .market-pulse__form {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .market-pulse__grid {
-    grid-template-columns: 1fr;
   }
 
   .market-pulse__pagination {
