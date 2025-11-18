@@ -2,18 +2,23 @@ import { useState } from "react";
 import { MarketCard } from "./MarketCard";
 
 const DEFAULT_TICKERS = ["SPY", "QQQ", "VOO"];
+const QUICK_TICKERS = ["AAPL", "MSFT", "NVDA", "TSLA", "BTC-USD", "GLD", "ARKK", "IWM"];
 
 export function MarketPulse() {
   const [input, setInput] = useState("");
   const [tickers, setTickers] = useState<string[]>(DEFAULT_TICKERS);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const symbol = input.trim().toUpperCase();
+  const addTicker = (rawSymbol: string) => {
+    const symbol = rawSymbol.trim().toUpperCase();
     if (!symbol) return;
     if (!tickers.includes(symbol)) {
       setTickers((prev) => [...prev, symbol]);
     }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    addTicker(input);
     setInput("");
   };
 
@@ -22,45 +27,74 @@ export function MarketPulse() {
   };
 
   return (
-    <section className="rounded-3xl bg-slate-950/60 border border-slate-800/80 p-5 space-y-5 shadow-[0_18px_60px_rgba(15,23,42,0.9)] w-full">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <section className="card pad market-pulse">
+      <div className="market-pulse__header">
         <div>
-          <h2 className="text-sm font-semibold tracking-[0.18em] text-slate-400 uppercase">Market Pulse</h2>
-          <p className="text-xs text-slate-500 mt-1">
-            Track broad market ETFs or search for any ticker you care about.
+          <p className="eyebrow">Market pulse</p>
+          <h2 className="market-pulse__headline">Clean desk view of the macro tape</h2>
+          <p className="muted">
+            Track the flagship ETFs that anchor our dashboard or drop in your own tickers for a focused snapshot that updates
+            automatically every 60 seconds.
           </p>
         </div>
-        <span className="inline-flex items-center rounded-full border border-emerald-500/40 px-3 py-1 text-[10px] font-medium text-emerald-300 bg-emerald-500/5">
-          Realtime via Finnhub
-        </span>
+        <div className="market-pulse__badges">
+          <span className="badge">Realtime via Finnhub</span>
+          <span className="badge subtle">Auto-refresh · 60s cadence</span>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex items-center gap-2">
-        <input
-          className="bg-slate-900/70 border border-slate-700/70 rounded-xl px-3 py-1.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 flex-1"
-          placeholder="Add ticker (e.g. AAPL)"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-        />
-        <button
-          type="submit"
-          className="px-3 py-1.5 rounded-xl text-sm font-medium bg-emerald-500 text-slate-950 hover:bg-emerald-400 transition"
-        >
-          Add
-        </button>
+      <div className="market-pulse__stat-grid">
+        <article className="market-pulse__stat">
+          <p className="eyebrow tiny">Watchlist size</p>
+          <div className="market-pulse__stat-value">{tickers.length}</div>
+          <p className="muted tiny">symbols being tracked</p>
+        </article>
+        <article className="market-pulse__stat">
+          <p className="eyebrow tiny">Default desk</p>
+          <div className="market-pulse__stat-value">{DEFAULT_TICKERS.join(" · ")}</div>
+          <p className="muted tiny">broad market coverage</p>
+        </article>
+        <article className="market-pulse__stat">
+          <p className="eyebrow tiny">Status</p>
+          <div className="market-pulse__stat-value status-positive">Synced &amp; stable</div>
+          <p className="muted tiny">refreshing every 60 seconds</p>
+        </article>
+      </div>
+
+      <form onSubmit={handleSubmit} className="market-pulse__form">
+        <label className="eyebrow tiny" htmlFor="ticker-input">
+          Add ticker
+        </label>
+        <div className="market-pulse__form-row">
+          <input
+            id="ticker-input"
+            className="market-pulse__input"
+            placeholder="Type a symbol like AAPL or BTC-USD"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+          />
+          <button type="submit" className="glow-btn">
+            Add symbol
+          </button>
+        </div>
       </form>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="market-pulse__quick-add">
+        <span className="eyebrow tiny">Quick add</span>
+        {QUICK_TICKERS.map((symbol) => (
+          <button key={symbol} type="button" onClick={() => addTicker(symbol)} className="market-pulse__chip">
+            {symbol}
+          </button>
+        ))}
+      </div>
+
+      <div className="watch-grid">
         {tickers.map((symbol) => (
-          <div key={symbol} className="relative group">
+          <div key={symbol} className="watch-grid__item">
             <MarketCard symbol={symbol} />
             {!DEFAULT_TICKERS.includes(symbol) && (
-              <button
-                type="button"
-                onClick={() => handleRemove(symbol)}
-                className="absolute -top-2 -right-2 text-[10px] px-2 py-0.5 rounded-full bg-slate-900/90 border border-slate-700/60 text-slate-300 opacity-0 group-hover:opacity-100 transition"
-              >
-                remove
+              <button type="button" onClick={() => handleRemove(symbol)} className="market-pulse__remove">
+                Remove
               </button>
             )}
           </div>

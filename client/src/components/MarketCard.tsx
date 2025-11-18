@@ -9,37 +9,37 @@ type MarketCardProps = {
 export function MarketCard({ symbol, label }: MarketCardProps) {
   const { data, loading, error } = useQuote(symbol);
 
-  if (error) {
-    return (
-      <div className="rounded-2xl bg-slate-900/70 p-4 flex flex-col justify-between border border-rose-500/30">
-        <div className="text-sm text-slate-400">{label ?? symbol}</div>
-        <div className="text-xs text-rose-400 mt-4">Error loading quote</div>
-      </div>
-    );
-  }
-
-  const price = data?.price != null ? data.price.toFixed(2) : loading ? "…" : "--";
+  const hasQuote = data != null;
+  const price = hasQuote ? `$${data.price.toFixed(2)}` : loading ? "Fetching…" : error ? "Offline" : "—";
   const change = data?.change ?? 0;
   const changePct = data?.changePercent ?? 0;
-  const changeColor = change >= 0 ? "text-emerald-400" : "text-rose-400";
+  const isUp = change >= 0;
+  const changeLabel = hasQuote
+    ? `${isUp ? "+" : "−"}${Math.abs(change).toFixed(2)} (${isUp ? "+" : "−"}${Math.abs(changePct).toFixed(2)}%)`
+    : error
+    ? "Quote offline"
+    : "Awaiting data";
+  const changeState = hasQuote ? (isUp ? "up" : "down") : error ? "offline" : "neutral";
 
   return (
-    <div className="rounded-2xl bg-slate-900/70 p-4 flex flex-col justify-between shadow-md shadow-slate-900/40 border border-slate-800/60">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-semibold tracking-[0.12em] text-slate-400">{symbol}</span>
-        {data?.updatedAt && <LastUpdated timestamp={data.updatedAt} />}
+    <article className={`watch-card ${error ? "offline" : ""}`}>
+      <div className="watch-card__head">
+        <div>
+          <p className="eyebrow tiny">{symbol}</p>
+          <p className="watch-card__label">{label ?? "Tracked equity"}</p>
+        </div>
+        {data?.updatedAt ? <LastUpdated timestamp={data.updatedAt} /> : <span className="watch-card__status">{loading ? "Syncing" : "Paused"}</span>}
       </div>
 
-      <div className="flex items-end justify-between mt-2">
-        <div className="text-2xl font-semibold text-slate-50">
-          {data ? <>${price}</> : price}
+      <div className="watch-card__body">
+        <div>
+          <div className="watch-card__price">{price}</div>
+          <p className="muted tiny">Spot price · 60s refresh</p>
         </div>
-        {data && (
-          <div className={`text-sm font-medium ${changeColor}`}>
-            {change.toFixed(2)} ({changePct.toFixed(2)}%)
-          </div>
-        )}
+        <div className={`watch-card__change ${changeState}`}>{changeLabel}</div>
       </div>
-    </div>
+
+      {error && <p className="watch-card__error">{error || "Unable to load quote"}</p>}
+    </article>
   );
 }
