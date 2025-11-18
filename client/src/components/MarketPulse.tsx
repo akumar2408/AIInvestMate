@@ -4,7 +4,7 @@ import { MarketCard } from "./MarketCard";
 const DEFAULT_TICKERS = ["SPY", "QQQ", "VOO"];
 const QUICK_TICKERS = ["AAPL", "MSFT", "NVDA", "TSLA", "PLTR", "GLD"];
 
-// 2 x 2 grid per “page”
+// 1 grid
 const PAGE_SIZE = 3;
 
 export function MarketPulse() {
