@@ -130,26 +130,35 @@ section + section {
 
 .brand {
   display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.brand-copy {
-  display: flex;
   flex-direction: column;
-  gap: 4px;
+  align-items: flex-start;
+  gap: 6px;
 }
 
 .brand-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
 }
 
-.brand-copy .live-clock {
-  margin-top: 6px;
-  align-self: flex-start;
+.brand-row--title {
+  flex-wrap: nowrap;
+}
+
+.brand-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.brand-title {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.brand-subtitle {
+  font-size: 12px;
+  color: #94a3b8;
 }
 
 .brand-badge {

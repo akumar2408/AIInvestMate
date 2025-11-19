@@ -114,18 +114,20 @@ function ShellContent() {
       <OnboardingWizard />
       <header className="header">
         <div className="brand">
-          <div className="brand-badge">💹</div>
-          <div className="brand-copy">
-            <div style={{ fontSize: 18, fontWeight: 800 }}>AI InvestMate</div>
-            <div style={{ fontSize: 12, color: "#94a3b8" }}>Personal finance, simplified</div>
-            <div className="live-clock" aria-live="polite">
-              <span className="live-dot" aria-hidden />
-              <span className="live-label">Live</span>
-              <span className="live-sep">•</span>
-              <span className="live-date">{dateLabel}</span>
-              <span className="live-sep">·</span>
-              <span className="live-time">{timeLabel}</span>
+          <div className="brand-row brand-row--title">
+            <div className="brand-badge">💹</div>
+            <div className="brand-title-block">
+              <div className="brand-title">AI InvestMate</div>
+              <div className="brand-subtitle">Personal finance, simplified</div>
             </div>
+          </div>
+          <div className="live-clock" aria-live="polite">
+            <span className="live-dot" aria-hidden />
+            <span className="live-label">Live</span>
+            <span className="live-sep">•</span>
+            <span className="live-date">{dateLabel}</span>
+            <span className="live-sep">·</span>
+            <span className="live-time">{timeLabel}</span>
           </div>
         </div>
         <div className="header-actions">

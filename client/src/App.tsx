@@ -67,18 +67,20 @@ export default function App() {
       <div className="container">
         <header className="header">
           <div className="brand">
-            <div className="brand-badge">💹</div>
-            <div className="brand-copy">
-              <p className="eyebrow">AI InvestMate</p>
-              <h1>Personal wealth copilot</h1>
-              <div className="live-clock" aria-live="polite">
-                <span className="live-dot" aria-hidden />
-                <span className="live-label">Live</span>
-                <span className="live-sep">•</span>
-                <span className="live-date">{dateLabel}</span>
-                <span className="live-sep">·</span>
-                <span className="live-time">{timeLabel}</span>
+            <div className="brand-row brand-row--title">
+              <div className="brand-badge">💹</div>
+              <div className="brand-title-block">
+                <p className="eyebrow">AI InvestMate</p>
+                <h1>Personal wealth copilot</h1>
               </div>
+            </div>
+            <div className="live-clock" aria-live="polite">
+              <span className="live-dot" aria-hidden />
+              <span className="live-label">Live</span>
+              <span className="live-sep">•</span>
+              <span className="live-date">{dateLabel}</span>
+              <span className="live-sep">·</span>
+              <span className="live-time">{timeLabel}</span>
             </div>
           </div>
           <div className="header-actions">
