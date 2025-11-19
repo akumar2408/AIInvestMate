@@ -9,10 +9,10 @@ type AIResponse = { reply: string; extras?: Extras; insights?: { kpis?: { income
 type StructuredSections = { snapshot: string[]; insights: string[]; next: string[]; misc: string[] };
 
 const suggestions = [
-  "Make a budget for me. I make $2.8k/month, rent is $1200, I want to invest $400.",
-  "Explain why Dining blew up this month and what to trim.",
-  "Give me a DCA plan for ETFs that matches a balanced risk profile.",
-  "Summarize my subscriptions and which ones to cancel."
+  "Explain my spending this month and what to trim.",
+  "Summarize today's market in two sentences.",
+  "Optimize my portfolio allocation for a balanced risk profile.",
+  "Highlight unusual transactions or budget alerts."
 ];
 
 function stripCodeFences(text: string): string {

@@ -1,218 +1,258 @@
 import React, { useMemo } from "react";
 import { useStore, monthKey, detectAnomalies } from "../state/store";
-import { MarketPulse } from "@/components/MarketPulse";
+
+const compactWatchlist = [
+  { symbol: "SPY", price: 484.12, change: "+0.42%" },
+  { symbol: "QQQ", price: 396.71, change: "+0.68%" },
+  { symbol: "NVDA", price: 545.22, change: "+1.9%" },
+  { symbol: "TSLA", price: 248.31, change: "-0.8%" },
+];
 
 export function Dashboard() {
   const { state } = useStore();
   const thisMonth = new Date().toISOString().slice(0, 7);
-  const txns = state.txns.filter((t) => monthKey(t.date) === thisMonth);
-  const income = txns.filter((t) => t.amount > 0).reduce((a, b) => a + b.amount, 0);
+  const txnsThisMonth = state.txns.filter((txn) => monthKey(txn.date) === thisMonth);
+  const income = txnsThisMonth.filter((txn) => txn.amount > 0).reduce((sum, txn) => sum + txn.amount, 0);
   const spend = Math.abs(
-    txns.filter((t) => t.amount < 0).reduce((a, b) => a + b.amount, 0)
+    txnsThisMonth.filter((txn) => txn.amount < 0).reduce((sum, txn) => sum + txn.amount, 0)
   );
   const savings = Math.max(0, income - spend);
   const savingsRate = income ? Math.round((savings / income) * 100) : 0;
   const runwayMonths = spend ? Math.max(1, Math.round((state.cash || 12000) / spend)) : 12;
-  const autopilotScore = Math.min(
-    100,
-    45 + state.goals.length * 6 + state.budgets.length * 4 + Math.min(20, Math.round(state.txns.length / 5))
-  );
-
-  const topCats = Object.entries(
-    txns.reduce((acc: any, t) => {
-      if (t.amount < 0) acc[t.category] = (acc[t.category] || 0) + Math.abs(t.amount);
-      return acc;
-    }, {})
-  )
-    .sort((a: any, b: any) => b[1] - a[1])
-    .slice(0, 5);
-
-  const anomalies = detectAnomalies(state.txns).slice(0, 3);
-  const latestTxns = state.txns.slice(-4).reverse();
+  const netWorth = (state.cash || 18000) + state.goals.reduce((total, goal) => total + goal.current, 0);
 
   const budgetsByCat = useMemo(() => {
-    return state.txns
-      .filter((t) => monthKey(t.date) === thisMonth && t.amount < 0)
-      .reduce((acc: any, t) => {
-        acc[t.category] = (acc[t.category] || 0) + Math.abs(t.amount);
+    return txnsThisMonth
+      .filter((txn) => txn.amount < 0)
+      .reduce<Record<string, number>>((acc, txn) => {
+        acc[txn.category] = (acc[txn.category] || 0) + Math.abs(txn.amount);
         return acc;
       }, {});
-  }, [state.txns, thisMonth]);
+  }, [txnsThisMonth]);
 
-  const budgetsAtRisk = state.budgets
-    .filter((b) => b.month === thisMonth)
-    .map((b) => {
-      const actual = budgetsByCat[b.category] || 0;
-      return { ...b, actual, pct: Math.min(150, Math.round((actual / Math.max(1, b.limit)) * 100)) };
+  const currentMonthBudgets = state.budgets.filter((budget) => budget.month === thisMonth);
+  const budgetsAtRisk = currentMonthBudgets
+    .map((budget) => {
+      const actual = budgetsByCat[budget.category] || 0;
+      const pct = Math.min(200, Math.round((actual / Math.max(1, budget.limit)) * 100));
+      return { ...budget, actual, pct };
     })
-    .filter((b) => b.pct >= 70);
+    .filter((budget) => budget.pct >= 80);
 
-  const scenarioPlays = [
+  const latestTxns = state.txns.slice(-6).reverse();
+  const anomalies = detectAnomalies(state.txns).slice(0, 2);
+
+  const aiBriefing = [
     {
-      label: "Dial down lifestyle",
-      detail: `Cut dining & shopping by 10% to free $${(spend * 0.1).toFixed(0)} / mo`,
+      title: "Cashflow",
+      detail:
+        savings > 0
+          ? `Net +$${savings.toFixed(0)} this month · savings rate ${savingsRate}%`
+          : `Running -$${Math.abs(savings).toFixed(0)} this month`,
     },
     {
-      label: "Snowball savings",
-      detail: `Lock $${(savings || 0).toFixed(0)} to taxable brokerage for +${(savings * 12 * 0.07).toFixed(0)} / yr`,
+      title: "Budgets",
+      detail: budgetsAtRisk.length
+        ? `${budgetsAtRisk.length} categories need attention`
+        : "No budgets at risk this month",
     },
     {
-      label: "Boost runway",
-      detail: `Move idle cash into HYSA · extends runway to ${runwayMonths + 2} months`,
+      title: "Goals",
+      detail: state.goals.length
+        ? `${Math.round(
+            Math.min(
+              100,
+              (state.goals.reduce((sum, goal) => sum + goal.current, 0) /
+                Math.max(1, state.goals.reduce((sum, goal) => sum + goal.target, 0))) *
+                100
+            )
+          )}% of goal funding captured`
+        : "Create a goal to start tracking progress",
     },
+    {
+      title: "Markets",
+      detail: compactWatchlist
+        .slice(0, 3)
+        .map((item) => `${item.symbol} ${item.change}`)
+        .join(" · "),
+    },
+  ];
+
+  const shortcuts = [
+    { label: "Go to Markets", target: "#markets" },
+    { label: "Go to Simulator", target: "#markets?panel=sim" },
+    { label: "Open AI Hub", target: "#ai" },
   ];
 
   return (
     <section style={{ marginTop: 12 }}>
-      <div className="page-split">
-        <div className="page-stack">
-          <div className="card pad">
-            <div className="title">
-              Pulse snapshot <strong>Realtime synced</strong>
+      <div className="page-grid two">
+        <div className="card pad">
+          <div className="title">Net worth & cashflow snapshot</div>
+          <p className="subtle">
+            Quick glance at runway, inflows, and spending momentum for {thisMonth}.
+          </p>
+          <div className="stat-grid" style={{ marginTop: 16 }}>
+            <div className="stat-card">
+              <span className="label">Net worth</span>
+              <div className="value">${netWorth.toFixed(0)}</div>
+              <div className="trend">{state.goals.length} goals contributing</div>
             </div>
-            <p className="subtle">AI InvestMate keeps every account reconciled so you can plan with clarity.</p>
-            <div className="stat-grid">
-              <Kpi label="Income" value={`$${income.toFixed(0)}`} trend={savingsRate > 35 ? "+ healthy" : "watch"} />
-              <Kpi label="Spending" value={`$${spend.toFixed(0)}`} trend={`-${Math.round((savings / Math.max(1, spend)) * 100)}% net`} />
-              <Kpi label="Savings rate" value={`${savingsRate}%`} trend={`${runwayMonths} mo runway`} />
-              <Kpi label="Projected savings" value={`$${(savings * 12).toFixed(0)}`} trend={"12 mo horizon"} />
+            <div className="stat-card">
+              <span className="label">Monthly inflow</span>
+              <div className="value">${income.toFixed(0)}</div>
+              <div className="trend">Savings rate {savingsRate}%</div>
             </div>
-            <div className="pill-row">
-              {["Ask AI what-if", "Schedule advisor", "Share snapshot"].map((pill) => (
-                <span key={pill} className="pill">
-                  {pill}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="card pad">
-            <div className="title">Autopilot</div>
-            <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap" }}>
-              <div style={{ minWidth: 160 }}>
-                <div className="radial">
-                  <span>{autopilotScore}%</span>
-                </div>
-                <p className="muted tiny" style={{ marginTop: 8 }}>
-                  automation score
-                </p>
-              </div>
-              <div style={{ flex: 1 }}>
-                <p className="muted">{state.budgets.length} budgets · {state.goals.length} goals · {state.txns.length} txns tracked</p>
-                <div className="progress-track" style={{ marginTop: 12 }}>
-                  <div className="progress-fill" style={{ width: `${autopilotScore}%` }} />
-                </div>
-                <div className="chips-inline">
-                  {scenarioPlays.map((play) => (
-                    <button key={play.label}>{play.label}</button>
-                  ))}
-                </div>
+            <div className="stat-card">
+              <span className="label">30-day spend</span>
+              <div className="value">${spend.toFixed(0)}</div>
+              <div className={savings >= 0 ? "trend" : "status-negative"}>
+                {savings >= 0 ? "On budget" : "Over budget"}
               </div>
             </div>
-          </div>
-
-          <div className="card pad">
-            <div className="title">Top categories</div>
-            {topCats.length ? (
-              <div className="timeline-grid">
-                {topCats.map(([cat, value]) => (
-                  <div key={cat} className="timeline-row">
-                    <div>
-                      <strong>{cat}</strong>
-                      <p className="muted tiny" style={{ marginTop: 4 }}>
-                        {((Number(value) / Math.max(1, spend)) * 100).toFixed(1)}% of spend
-                      </p>
-                    </div>
-                    <div style={{ width: "60%" }}>
-                      <div className="progress-track">
-                        <div className="progress-fill" style={{ width: `${Math.min(100, (Number(value) / Math.max(1, spend)) * 100)}%` }} />
-                      </div>
-                    </div>
-                    <span>${Number(value).toFixed(0)}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="muted">No data yet. Add transactions!</div>
-            )}
-          </div>
-
-          <div className="card pad">
-            <div className="title">Live feed</div>
-            <ul className="feed">
-              {latestTxns.length ? (
-                latestTxns.map((t) => (
-                  <li key={t.id}>
-                    <strong>{t.description}</strong>
-                    <span>
-                      {t.category} · {t.date}
-                    </span>
-                    <span className={t.amount < 0 ? "status-negative" : "status-positive"}>
-                      {t.amount < 0 ? "-" : "+"}${Math.abs(t.amount).toFixed(2)}
-                    </span>
-                  </li>
-                ))
-              ) : (
-                <li className="muted">Your latest transactions will land here.</li>
-              )}
-            </ul>
-          </div>
-
-          <div className="card pad">
-            <div className="title">Budgets watchlist</div>
-            {budgetsAtRisk.length ? (
-              budgetsAtRisk.map((b) => (
-                <div key={b.id} style={{ marginBottom: 16 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <strong>{b.category}</strong>
-                    <span className={b.pct >= 100 ? "status-negative" : "status-positive"}>{b.pct}%</span>
-                  </div>
-                  <div className="progress-track" style={{ marginTop: 6 }}>
-                    <div className="progress-fill" style={{ width: `${Math.min(100, b.pct)}%` }} />
-                  </div>
-                  <p className="muted tiny" style={{ marginTop: 4 }}>
-                    ${b.actual.toFixed(0)} of ${b.limit.toFixed(0)} used
-                  </p>
-                </div>
-              ))
-            ) : (
-              <div className="muted">All clear for this month.</div>
-            )}
-          </div>
-
-          <div className="card pad">
-            <div className="title">AI anomalies</div>
-            {anomalies.length ? (
-              anomalies.map((a, i) => (
-                <div key={i} className="callout-strong" style={{ marginBottom: 12 }}>
-                  <strong>{a.month}</strong>
-                  <p className="muted" style={{ marginTop: 6 }}>
-                    Spending spike ${a.current.toFixed(0)} vs avg ${a.avgPrev.toFixed(0)} · {a.diff.toFixed(0)} swing
-                  </p>
-                </div>
-              ))
-            ) : (
-              <p className="muted">No anomalies detected.</p>
-            )}
+            <div className="stat-card">
+              <span className="label">Runway</span>
+              <div className="value">{runwayMonths} months</div>
+              <div className="trend">{state.txns.length} transactions tracked</div>
+            </div>
           </div>
         </div>
 
-        <div className="page-stack">
-          <div style={{ width: "100%" }}>
-            <MarketPulse />
+        <div className="card pad">
+          <div className="title">AI daily briefing</div>
+          <ul className="list-clean">
+            {aiBriefing.map((item) => (
+              <li key={item.title}>
+                <strong>{item.title}</strong>
+                <p className="muted tiny">{item.detail}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div className="page-grid two" style={{ marginTop: 22 }}>
+        <div className="card pad">
+          <div className="title">MarketPulse mini desk</div>
+          <div className="market-grid">
+            {compactWatchlist.map((row) => (
+              <div key={row.symbol} className="market-card">
+                <div className="market-symbol">
+                  <span>{row.symbol}</span>
+                  <span className={`market-change ${row.change.includes("-") ? "neg" : "pos"}`}>
+                    {row.change}
+                  </span>
+                </div>
+                <div className="market-price-row">
+                  <div>
+                    <p className="muted tiny">Last</p>
+                    <div className="market-price">${row.price.toFixed(2)}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="card pad">
+          <div className="title">Shortcuts</div>
+          <p className="subtle">Jump directly into deeper tools.</p>
+          <div className="pill-row" style={{ marginTop: 16 }}>
+            {shortcuts.map((shortcut) => (
+              <button
+                key={shortcut.label}
+                className="chip"
+                onClick={() => {
+                  window.location.hash = shortcut.target;
+                }}
+              >
+                {shortcut.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="page-grid two" style={{ marginTop: 22 }}>
+        <div className="card pad">
+          <div className="title">Latest activity</div>
+          <ul className="feed">
+            {latestTxns.length ? (
+              latestTxns.map((txn) => (
+                <li key={txn.id}>
+                  <strong>{txn.description}</strong>
+                  <span className="muted tiny">
+                    {txn.category} · {txn.date}
+                  </span>
+                  <span className={txn.amount < 0 ? "status-negative" : "status-positive"}>
+                    {txn.amount < 0 ? "-" : "+"}${Math.abs(txn.amount).toFixed(2)}
+                  </span>
+                </li>
+              ))
+            ) : (
+              <li className="muted">No activity yet.</li>
+            )}
+          </ul>
+        </div>
+
+        <div className="card pad">
+          <div className="title">Budget radar</div>
+          {budgetsAtRisk.length ? (
+            <div className="timeline-grid">
+              {budgetsAtRisk.map((budget) => (
+                <div key={budget.id} className="timeline-row">
+                  <div>
+                    <strong>{budget.category}</strong>
+                    <p className="muted tiny">
+                      ${budget.actual.toFixed(0)} of ${budget.limit.toFixed(0)}
+                    </p>
+                  </div>
+                  <span className={budget.pct >= 100 ? "status-negative" : "status-positive"}>
+                    {budget.pct}% used
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">All budgets are within target.</p>
+          )}
+        </div>
+      </div>
+
+      <div className="page-grid two" style={{ marginTop: 22 }}>
+        <div className="card pad">
+          <div className="title">AI anomalies</div>
+          {anomalies.length ? (
+            anomalies.map((anomaly, index) => (
+              <div key={index} className="callout-strong" style={{ marginBottom: 12 }}>
+                <strong>{anomaly.month}</strong>
+                <p className="muted tiny" style={{ marginTop: 6 }}>
+                  Spend ${anomaly.current.toFixed(0)} vs avg ${anomaly.avgPrev.toFixed(0)} · Δ $
+                  {anomaly.diff.toFixed(0)}
+                </p>
+              </div>
+            ))
+          ) : (
+            <p className="muted">No anomalies detected.</p>
+          )}
+        </div>
+
+        <div className="card pad">
+          <div className="title">Planning momentum</div>
+          <p className="subtle">
+            {state.goals.length
+              ? `${state.goals.length} goals and ${state.budgets.length} budgets synced`
+              : "Add a goal or budget to unlock personalized planning."}
+          </p>
+          <div className="pill-row" style={{ marginTop: 14 }}>
+            {["Review cashflow", "Add goal", "Ask AI for a recap"].map((pill) => (
+              <span key={pill} className="pill">
+                {pill}
+              </span>
+            ))}
           </div>
         </div>
       </div>
     </section>
-  );
-}
-
-function Kpi({ label, value, trend }: { label: string; value: string; trend: string }) {
-  return (
-    <div className="stat-card">
-      <span className="label">{label}</span>
-      <div className="value">{value}</div>
-      <div className="trend">{trend}</div>
-    </div>
   );
 }
