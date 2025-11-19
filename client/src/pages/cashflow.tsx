@@ -11,7 +11,7 @@ const defaultTxn = () => ({
 });
 
 export function CashflowPage() {
-  const { state, addTxn, addBudget } = useStore();
+  const { state, addTxn, addBudget, deleteTxn, deleteBudget } = useStore();
   const [view, setView] = useState<FilterView>("all");
   const [query, setQuery] = useState("");
   const [txnForm, setTxnForm] = useState(defaultTxn);
@@ -181,12 +181,13 @@ export function CashflowPage() {
             <div className="table-scroll">
               <table className="table">
                 <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Description</th>
-                    <th>Category</th>
-                    <th style={{ textAlign: "right" }}>Amount</th>
-                  </tr>
+          <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th>Category</th>
+            <th style={{ textAlign: "right" }}>Amount</th>
+            <th style={{ textAlign: "right" }}>Actions</th>
+          </tr>
                 </thead>
                 <tbody>
                   {filteredTxns.slice(0, 8).map((txn) => (
@@ -199,11 +200,20 @@ export function CashflowPage() {
                           {txn.amount >= 0 ? "+" : "-"}${Math.abs(txn.amount).toFixed(2)}
                         </span>
                       </td>
+                      <td style={{ textAlign: "right" }}>
+                        <button
+                          className="ghost"
+                          onClick={() => deleteTxn(txn.id)}
+                          style={{ fontSize: 12, padding: "4px 8px" }}
+                        >
+                          Delete
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {!filteredTxns.length && (
                     <tr>
-                      <td colSpan={4} style={{ color: "#94a3b8" }}>
+                      <td colSpan={5} style={{ color: "#94a3b8" }}>
                         No transactions yet. Add one below to get started.
                       </td>
                     </tr>
@@ -261,18 +271,27 @@ export function CashflowPage() {
                   const pct = Math.min(150, Math.round((actual / Math.max(1, budget.limit)) * 100));
                   return (
                     <div key={budget.id} className="timeline-row" style={{ flexDirection: "column", alignItems: "flex-start" }}>
-                      <div style={{ display: "flex", width: "100%", justifyContent: "space-between" }}>
-                        <strong>{budget.category}</strong>
-                        <span className={pct >= 100 ? "status-negative" : "status-positive"}>
-                          {pct}% used
-                        </span>
+                      <div style={{ display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                        <div>
+                          <strong>{budget.category}</strong>
+                          <p className="muted tiny">${actual.toFixed(0)} of ${budget.limit.toFixed(0)}</p>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span className={pct >= 100 ? "status-negative" : "status-positive"}>
+                            {pct}% used
+                          </span>
+                          <button
+                            className="ghost"
+                            onClick={() => deleteBudget(budget.id)}
+                            style={{ fontSize: 12, padding: "4px 8px" }}
+                          >
+                            Remove
+                          </button>
+                        </div>
                       </div>
                       <div className="progress-track" style={{ width: "100%", marginTop: 8 }}>
                         <div className="progress-fill" style={{ width: `${Math.min(100, pct)}%` }} />
                       </div>
-                      <p className="muted tiny" style={{ marginTop: 4 }}>
-                        ${actual.toFixed(0)} of ${budget.limit.toFixed(0)}
-                      </p>
                     </div>
                   );
                 })}

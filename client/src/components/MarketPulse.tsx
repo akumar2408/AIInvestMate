@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { MarketCard } from "./MarketCard";
+import { useStore } from "@/state/store";
 
 const DEFAULT_TICKERS = ["SPY", "QQQ", "VOO"];
 const QUICK_TICKERS = ["AAPL", "MSFT", "NVDA", "TSLA", "PLTR", "GLD"];
@@ -9,7 +10,11 @@ const PAGE_SIZE = 3;
 
 export function MarketPulse() {
   const [input, setInput] = useState("");
-  const [tickers, setTickers] = useState<string[]>(DEFAULT_TICKERS);
+  const { state, setMarketWatchlist } = useStore();
+  const tickers = useMemo(() => {
+    if (Array.isArray(state.marketWatchlist)) return state.marketWatchlist;
+    return DEFAULT_TICKERS;
+  }, [state.marketWatchlist]);
   const [page, setPage] = useState(1);
 
   const totalPages = Math.max(1, Math.ceil(tickers.length / PAGE_SIZE));
@@ -20,14 +25,11 @@ export function MarketPulse() {
     const symbol = rawSymbol.trim().toUpperCase();
     if (!symbol) return;
 
-    setTickers((prev) => {
-      if (prev.includes(symbol)) return prev;
-      const next = [...prev, symbol];
-      const newTotalPages = Math.max(1, Math.ceil(next.length / PAGE_SIZE));
-      // jump to last page so the new symbol is visible
-      setPage(newTotalPages);
-      return next;
-    });
+    if (tickers.includes(symbol)) return;
+    const next = [...tickers, symbol];
+    const newTotalPages = Math.max(1, Math.ceil(next.length / PAGE_SIZE));
+    setMarketWatchlist(next);
+    setPage(newTotalPages);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -37,16 +39,14 @@ export function MarketPulse() {
   };
 
   const handleRemove = (symbol: string) => {
-    setTickers((prev) => {
-      const next = prev.filter((s) => s !== symbol);
-      const newTotalPages = Math.max(1, Math.ceil(next.length / PAGE_SIZE));
-      setPage((current) => Math.min(current, newTotalPages));
-      return next;
-    });
+    const next = tickers.filter((s) => s !== symbol);
+    const newTotalPages = Math.max(1, Math.ceil(Math.max(1, next.length) / PAGE_SIZE));
+    setMarketWatchlist(next);
+    setPage((current) => Math.min(current, Math.max(1, newTotalPages)));
   };
 
   const handleResetDesk = () => {
-    setTickers(DEFAULT_TICKERS);
+    setMarketWatchlist(DEFAULT_TICKERS);
     setPage(1);
   };
 

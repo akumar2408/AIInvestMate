@@ -4,7 +4,7 @@ import { useStore, monthKey } from "../state/store";
 type Metric = "save" | "inc" | "exp";
 
 export function GoalsPlanningPage() {
-  const { state, addGoal, updateGoal } = useStore();
+  const { state, addGoal, updateGoal, deleteGoal } = useStore();
   const [name, setName] = useState("Emergency fund");
   const [target, setTarget] = useState("5000");
   const [deadline, setDeadline] = useState("");
@@ -165,6 +165,17 @@ export function GoalsPlanningPage() {
                       className="goal-card"
                       onClick={() => setFocusGoal(goal.id)}
                     >
+                      <button
+                        className="ghost"
+                        style={{ position: "absolute", top: 10, right: 12, fontSize: 12, padding: "4px 8px" }}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          deleteGoal(goal.id);
+                          if (focusGoal === goal.id) setFocusGoal(null);
+                        }}
+                      >
+                        Remove
+                      </button>
                       <h4>{goal.name}</h4>
                       <small>
                         ${goal.current.toFixed(0)} / ${goal.target.toFixed(0)}

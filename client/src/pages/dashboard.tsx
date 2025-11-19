@@ -1,15 +1,13 @@
 import React, { useMemo } from "react";
 import { useStore, monthKey, detectAnomalies } from "../state/store";
+import { useQuote } from "@/hooks/useQuote";
 
-const compactWatchlist = [
-  { symbol: "SPY", price: 484.12, change: "+0.42%" },
-  { symbol: "QQQ", price: 396.71, change: "+0.68%" },
-  { symbol: "NVDA", price: 545.22, change: "+1.9%" },
-  { symbol: "TSLA", price: 248.31, change: "-0.8%" },
-];
+const DEFAULT_WATCHLIST = ["SPY", "QQQ", "VOO", "AAPL"];
 
 export function Dashboard() {
   const { state } = useStore();
+  const watchlist = state.marketWatchlist && state.marketWatchlist.length ? state.marketWatchlist : DEFAULT_WATCHLIST;
+  const visibleWatch = watchlist.slice(0, 4);
   const thisMonth = new Date().toISOString().slice(0, 7);
   const txnsThisMonth = state.txns.filter((txn) => monthKey(txn.date) === thisMonth);
   const income = txnsThisMonth.filter((txn) => txn.amount > 0).reduce((sum, txn) => sum + txn.amount, 0);
@@ -71,10 +69,7 @@ export function Dashboard() {
     },
     {
       title: "Markets",
-      detail: compactWatchlist
-        .slice(0, 3)
-        .map((item) => `${item.symbol} ${item.change}`)
-        .join(" · "),
+      detail: visibleWatch.map((symbol) => symbol).join(" · "),
     },
   ];
 
@@ -134,24 +129,15 @@ export function Dashboard() {
       <div className="page-grid two" style={{ marginTop: 22 }}>
         <div className="card pad">
           <div className="title">MarketPulse mini desk</div>
-          <div className="market-grid">
-            {compactWatchlist.map((row) => (
-              <div key={row.symbol} className="market-card">
-                <div className="market-symbol">
-                  <span>{row.symbol}</span>
-                  <span className={`market-change ${row.change.includes("-") ? "neg" : "pos"}`}>
-                    {row.change}
-                  </span>
-                </div>
-                <div className="market-price-row">
-                  <div>
-                    <p className="muted tiny">Last</p>
-                    <div className="market-price">${row.price.toFixed(2)}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          {visibleWatch.length ? (
+            <div className="market-grid">
+              {visibleWatch.map((symbol) => (
+                <CompactWatchCard key={symbol} symbol={symbol} />
+              ))}
+            </div>
+          ) : (
+            <p className="muted">No tickers selected yet. Add some from the Markets tab.</p>
+          )}
         </div>
 
         <div className="card pad">
@@ -254,5 +240,35 @@ export function Dashboard() {
         </div>
       </div>
     </section>
+  );
+}
+
+function CompactWatchCard({ symbol }: { symbol: string }) {
+  const { data, loading, error } = useQuote(symbol);
+  const price = data ? `$${data.price.toFixed(2)}` : loading ? "Loading…" : error ? "Offline" : "—";
+  const rawChange = data?.change ?? 0;
+  const rawPct = data?.changePercent ?? 0;
+  const changeLabel = data
+    ? `${rawChange >= 0 ? "+" : "-"}${Math.abs(rawChange).toFixed(2)} (${rawPct >= 0 ? "+" : "-"}${Math.abs(rawPct).toFixed(2)}%)`
+    : loading
+    ? "Syncing"
+    : error
+    ? "Unavailable"
+    : "Awaiting data";
+  const changeClass = data ? (rawChange >= 0 ? "pos" : "neg") : "";
+
+  return (
+    <div className="market-card">
+      <div className="market-symbol">
+        <span>{symbol}</span>
+        <span className={`market-change ${changeClass}`}>{changeLabel}</span>
+      </div>
+      <div className="market-price-row">
+        <div>
+          <p className="muted tiny">Last</p>
+          <div className="market-price">{price}</div>
+        </div>
+      </div>
+    </div>
   );
 }

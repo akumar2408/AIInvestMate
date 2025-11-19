@@ -57,6 +57,7 @@ type State = {
   profile?: Profile | null;
   aiLogs: ChatLog[];
   cash?: number;
+  marketWatchlist: string[];
 };
 
 const StoreCtx = createContext<{
@@ -66,8 +67,10 @@ const StoreCtx = createContext<{
   importTxnsCSV: (csv: string) => number;
   addBudget: (b: Omit<Budget, "id">) => void;
   replaceBudgets: (rows: Budget[]) => void;
+  deleteBudget: (id: string) => void;
   addGoal: (g: Omit<Goal, "id">) => void;
   updateGoal: (id: string, patch: Partial<Goal>) => void;
+  deleteGoal: (id: string) => void;
   updateProfile: (profile: Profile) => Promise<void>;
   logChat: (entry: { month: string; question: string; answer: string }) => Promise<void>;
   exportAll: () => string;
@@ -76,9 +79,11 @@ const StoreCtx = createContext<{
   clearCloudState: () => void;
   syncStatus: 'idle' | 'syncing' | 'ok' | 'error';
   lastSyncedAt?: string;
+  setMarketWatchlist: (tickers: string[]) => void;
 } | null>(null);
 
 const KEY = "aimate_state_v1";
+const DEFAULT_WATCHLIST = ["SPY", "QQQ", "VOO"];
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<State>(() => {
@@ -86,10 +91,27 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const raw = localStorage.getItem(KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        return { txns: [], budgets: [], goals: [], aiLogs: [], profile: null, ...parsed };
+        const parsedWatchlist = Array.isArray(parsed.marketWatchlist) ? parsed.marketWatchlist : DEFAULT_WATCHLIST;
+        return {
+          txns: [],
+          budgets: [],
+          goals: [],
+          aiLogs: [],
+          profile: null,
+          ...parsed,
+          marketWatchlist: parsedWatchlist,
+        };
       }
     } catch {}
-    return { txns: [], budgets: [], goals: [], aiLogs: [], userId: undefined, profile: null };
+    return {
+      txns: [],
+      budgets: [],
+      goals: [],
+      aiLogs: [],
+      userId: undefined,
+      profile: null,
+      marketWatchlist: DEFAULT_WATCHLIST,
+    };
   });
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'ok' | 'error'>('idle');
   const [lastSyncedAt, setLastSyncedAt] = useState<string | undefined>(undefined);
@@ -107,7 +129,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }
       if (!userId) {
         setSyncStatus('idle');
-        setState((s) => ({ ...s, userId: undefined }));
+        setState((s) => ({
+          ...s,
+          userId: undefined,
+          marketWatchlist: Array.isArray(s.marketWatchlist) ? s.marketWatchlist : DEFAULT_WATCHLIST,
+        }));
         return;
       }
 
@@ -199,6 +225,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         goals,
         aiLogs,
         profile,
+        marketWatchlist: Array.isArray(s.marketWatchlist) ? s.marketWatchlist : DEFAULT_WATCHLIST,
       }));
       setSyncStatus('ok');
       setLastSyncedAt(new Date().toISOString());
@@ -215,7 +242,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     refreshFromCloud: (id?: string) => pullFromCloud(id),
     initFromSupabase: (id?: string) => pullFromCloud(id),
     clearCloudState: () => {
-      setState((s) => ({ ...s, userId: undefined }));
+      setState((s) => ({
+        ...s,
+        userId: undefined,
+        marketWatchlist: Array.isArray(s.marketWatchlist) ? s.marketWatchlist : DEFAULT_WATCHLIST,
+      }));
       setSyncStatus('idle');
       setLastSyncedAt(undefined);
     },
@@ -300,6 +331,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     addBudget: (b: Omit<Budget, 'id'>) =>
       setState((s) => ({ ...s, budgets: [...s.budgets, { ...b, id: crypto.randomUUID() }] })),
     replaceBudgets: (rows: Budget[]) => setState((s) => ({ ...s, budgets: rows })),
+    deleteBudget: (id: string) =>
+      setState((s) => ({ ...s, budgets: s.budgets.filter((budget) => budget.id !== id) })),
     addGoal: (g: Omit<Goal, 'id'>) =>
       setState((s) => ({ ...s, goals: [...s.goals, { ...g, id: crypto.randomUUID() }] })),
     updateGoal: (id: string, patch: Partial<Goal>) =>
@@ -307,6 +340,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         ...s,
         goals: s.goals.map((goal) => (goal.id === id ? { ...goal, ...patch } : goal)),
       })),
+    deleteGoal: (id: string) =>
+      setState((s) => ({ ...s, goals: s.goals.filter((goal) => goal.id !== id) })),
     updateProfile: async (profile: Profile) => {
       setState((s) => ({ ...s, profile: { ...profile, onboardingComplete: true } }));
       if (!state.userId) return;
@@ -356,6 +391,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setLastSyncedAt(new Date().toISOString());
     },
     exportAll: () => JSON.stringify(state, null, 2),
+    setMarketWatchlist: (tickers: string[]) =>
+      setState((s) => ({
+        ...s,
+        marketWatchlist: tickers,
+      })),
   }), [state, syncStatus, lastSyncedAt]);
 
   return <StoreCtx.Provider value={api}>{children}</StoreCtx.Provider>;
@@ -391,4 +431,3 @@ export function detectAnomalies(txns: Txn[]) {
   }
   return spikes;
 }
-

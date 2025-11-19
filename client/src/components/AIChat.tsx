@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "../state/store";
 import type { Concept } from "@shared/concepts";
 import { InfoPill } from "./InfoPill";
@@ -133,6 +133,41 @@ export default function AIChat() {
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
 
+  const buildBroadAnswer = useCallback(
+    (prompt: string) => {
+      const lower = prompt.toLowerCase();
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      const monthTxns = state.txns.filter((txn) => monthKey(txn.date) === currentMonth);
+      const income = monthTxns.filter((txn) => txn.amount > 0).reduce((sum, txn) => sum + txn.amount, 0);
+      const spend = Math.abs(monthTxns.filter((txn) => txn.amount < 0).reduce((sum, txn) => sum + txn.amount, 0));
+      const net = income - spend;
+      const runway = spend ? Math.max(1, Math.round((state.cash || 12000) / spend)) : 12;
+      const watchlist =
+        state.marketWatchlist && state.marketWatchlist.length ? state.marketWatchlist.slice(0, 4).join(", ") : "SPY, QQQ, VOO";
+      const topGoal = state.goals[0];
+      const budgetCount = state.budgets.length;
+
+      if (lower.includes("market")) {
+        return `Markets snapshot: Attention is on ${watchlist}. Keep allocations balanced, pair any risk-on moves with hedges, and remember macro shifts can whipsaw short-term sentiment.`;
+      }
+      if (lower.includes("spend") || lower.includes("budget") || lower.includes("cash")) {
+        return `Cashflow for ${currentMonth}: income $${income.toFixed(0)} vs spend $${spend.toFixed(0)}, leaving a net of $${net.toFixed(
+          0
+        )} and roughly ${runway} months of runway. Review your ${budgetCount} active budgets to keep the plan on track.`;
+      }
+      if (lower.includes("goal") || lower.includes("plan")) {
+        return topGoal
+          ? `Goal progress: ${topGoal.name} is ${Math.round((topGoal.current / Math.max(1, topGoal.target)) * 100)}% funded. Automating transfers plus watching ${watchlist} for entry points keeps the broader roadmap on target.`
+          : "You can create goals and budgets so I can track progress, surface milestones, and keep you on pace automatically.";
+      }
+
+      return `Here's the high-level take: ${currentMonth} cashflow is net $${net.toFixed(
+        0
+      )}, you have ${state.goals.length || "no"} goals and ${budgetCount} budgets synced, and markets attention is on ${watchlist}. Use me for deeper dives whenever you need.`;
+    },
+    [state.txns, state.budgets, state.goals, state.marketWatchlist, state.cash]
+  );
+
   async function send(text?: string) {
     const msg = (text ?? input).trim();
     if (!msg) return;
@@ -173,20 +208,27 @@ export default function AIChat() {
         throw new Error("Missing reply from chat endpoint");
       }
 
-      setMessages((m) => [...m, { id: crypto.randomUUID(), role: "assistant", content: data.reply }]);
+      let reply = data.reply.trim();
+      if (!reply || reply.length < 12) {
+        reply = buildBroadAnswer(msg);
+      }
+
+      setMessages((m) => [...m, { id: crypto.randomUUID(), role: "assistant", content: reply }]);
 
       if (data.extras) setExtras(data.extras);
       if (data.insights?.kpis) setKpis(data.insights.kpis);
 
-      logChat({ month: currentMonth, question: msg, answer: data.reply });
+      logChat({ month: currentMonth, question: msg, answer: reply });
       setStatus("Answered • " + new Date().toLocaleTimeString());
     } catch (e) {
       console.error("AI chat error", e);
+      const fallback = buildBroadAnswer(msg);
       setMessages((m) => [
         ...m,
-        { id: crypto.randomUUID(), role: "assistant", content: "Sorry, I hit an error. Try again." },
+        { id: crypto.randomUUID(), role: "assistant", content: fallback },
       ]);
-      setStatus("AI unavailable. Try again.");
+      logChat({ month: currentMonth, question: msg, answer: fallback });
+      setStatus("Shared a broad overview");
     } finally {
       setLoading(false);
     }

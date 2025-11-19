@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { MarketPulse } from "@/components/MarketPulse";
+import { SimulatorPage } from "./simulator";
 
 type MarketsPageProps = {
   panel?: string;
@@ -79,6 +80,8 @@ function AnalystPanel() {
     }
   };
 
+  const formattedAnswer = useMemo(() => formatAnalystAnswer(answer), [answer]);
+
   return (
     <div className="card pad" id="analyst">
       <div className="title">AI analyst mini-chat</div>
@@ -109,9 +112,19 @@ function AnalystPanel() {
       </div>
       <div className="callout" style={{ marginTop: 18 }}>
         <strong>Analyst reply</strong>
-        <p className="muted tiny" style={{ marginTop: 6 }}>
-          {answer}
-        </p>
+        {formattedAnswer.length ? (
+          <ul className="list-clean" style={{ marginTop: 6 }}>
+            {formattedAnswer.map((line, index) => (
+              <li key={`${line}-${index}`}>
+                <p className="muted tiny">{line}</p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted tiny" style={{ marginTop: 6 }}>
+            {answer}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -119,6 +132,23 @@ function AnalystPanel() {
 
 export function MarketsPage({ panel }: MarketsPageProps) {
   const highlightSimulator = panel === "sim";
+  const [showSimulator, setShowSimulator] = useState(panel === "sim");
+
+  useEffect(() => {
+    setShowSimulator(panel === "sim");
+  }, [panel]);
+
+  const openSimulator = () => {
+    setShowSimulator(true);
+    window.location.hash = "#markets?panel=sim";
+  };
+
+  const closeSimulator = () => {
+    setShowSimulator(false);
+    if (window.location.hash.includes("panel=sim")) {
+      window.location.hash = "#markets";
+    }
+  };
 
   return (
     <section style={{ marginTop: 12 }}>
@@ -253,15 +283,31 @@ export function MarketsPage({ panel }: MarketsPageProps) {
             <button
               className="glow-btn"
               style={{ marginTop: 16 }}
-              onClick={() => {
-                window.location.hash = "#markets?panel=sim";
-              }}
+              onClick={openSimulator}
             >
               Launch simulator
             </button>
           </div>
 
           <AnalystPanel />
+
+          {showSimulator && (
+            <div className="card pad" id="simulator-panel">
+              <div className="title">
+                Portfolio simulator
+                <button
+                  className="ghost"
+                  onClick={closeSimulator}
+                  style={{ marginLeft: "auto", fontSize: 12, padding: "4px 8px" }}
+                >
+                  Close
+                </button>
+              </div>
+              <div className="simulator-embed" style={{ marginTop: 12, maxHeight: 620, overflowY: "auto" }}>
+                <SimulatorPage />
+              </div>
+            </div>
+          )}
 
           <div className="card pad">
             <div className="title">Predictive commentary</div>
@@ -277,4 +323,13 @@ export function MarketsPage({ panel }: MarketsPageProps) {
       </div>
     </section>
   );
+}
+
+function formatAnalystAnswer(raw: string) {
+  if (!raw) return [];
+  return raw
+    .split(/[.\n]+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 4);
 }
