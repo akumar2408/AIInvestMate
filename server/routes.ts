@@ -13,7 +13,16 @@ import {
   insertRecurringRuleSchema,
   insertCategoryRuleSchema
 } from "@shared/schema";
-import type { InsertCategoryRule } from "@shared/schema";
+import type {
+  InsertTransaction,
+  InsertBudget,
+  InsertGoal,
+  InsertInvestment,
+  InsertReport,
+  InsertCategory,
+  InsertRecurringRule,
+  InsertCategoryRule
+} from "@shared/schema";
 import { z } from "zod";
 import { aiService } from "./services/openai";
 
@@ -218,7 +227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/transactions', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const validatedData = insertTransactionSchema.parse({
+      const validatedData: InsertTransaction = insertTransactionSchema.parse({
         ...req.body,
         userId,
       });
@@ -259,7 +268,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/budgets', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const validatedData = insertBudgetSchema.parse({
+      const validatedData: InsertBudget = insertBudgetSchema.parse({
         ...req.body,
         userId,
       });
@@ -289,7 +298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/goals', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const validatedData = insertGoalSchema.parse({
+      const validatedData: InsertGoal = insertGoalSchema.parse({
         ...req.body,
         userId,
       });
@@ -319,7 +328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/investments', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const validatedData = insertInvestmentSchema.parse({
+      const validatedData: InsertInvestment = insertInvestmentSchema.parse({
         ...req.body,
         userId,
       });
@@ -355,7 +364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         goals,
       });
       
-      const validatedData = insertReportSchema.parse({
+      const validatedData: InsertReport = insertReportSchema.parse({
         userId,
         period: period as string,
         summary,
@@ -468,7 +477,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/categories', isAuthenticated, async (req: any, res) => {
     try {
-      const validatedData = insertCategorySchema.parse(req.body);
+      const validatedData: InsertCategory = insertCategorySchema.parse(req.body);
       const category = await storage.createCategory(validatedData);
       res.json(category);
     } catch (error) {
@@ -492,7 +501,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/recurring-rules', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const validatedData = insertRecurringRuleSchema.parse({
+      const validatedData: InsertRecurringRule = insertRecurringRuleSchema.parse({
         ...req.body,
         userId,
       });
@@ -507,7 +516,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/recurring-rules/:id', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const validatedData = insertRecurringRuleSchema.partial().parse(req.body);
+      const validatedData: Partial<InsertRecurringRule> = insertRecurringRuleSchema.partial().parse(req.body);
       const rule = await storage.updateRecurringRule(id, validatedData);
       res.json(rule);
     } catch (error) {
@@ -542,7 +551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/category-rules', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const validatedData = insertCategoryRuleSchema.parse({
+      const validatedData: InsertCategoryRule = insertCategoryRuleSchema.parse({
         ...req.body,
         userId,
       }) as InsertCategoryRule;
@@ -569,7 +578,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/transactions', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      let transactionData = insertTransactionSchema.parse({
+      let transactionData: InsertTransaction = insertTransactionSchema.parse({
         ...req.body,
         userId,
         date: new Date(req.body.date),
