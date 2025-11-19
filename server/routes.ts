@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import Stripe from "stripe";
+import axios from "axios";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import {
@@ -25,6 +26,9 @@ import type {
 } from "@shared/schema";
 import { z } from "zod";
 import { aiService } from "./services/openai";
+
+const FINNHUB_BASE_URL = "https://finnhub.io/api/v1";
+const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY?.trim();
 
 if (!process.env.STRIPE_SECRET_KEY) {
   console.warn('STRIPE_SECRET_KEY not provided - subscription features will be disabled');
@@ -604,6 +608,177 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Markets API routes
+  app.get('/api/markets/sentiment', async (req, res) => {
+    try {
+      const tickers = parseTickersParam(
+        req.query.tickers,
+        ["NVDA", "TSLA", "MSFT", "NFLX"]
+      );
+
+      const items = await Promise.all(
+        tickers.map(async (symbol) => {
+          try {
+            const [quote, sentiment] = await Promise.all([
+              finnhubGet<{ dp?: number }>('quote', { symbol }),
+              finnhubGet<{ companyNewsScore?: number }>('news-sentiment', { symbol }),
+            ]);
+
+            const movePct = typeof quote?.dp === 'number' ? Number(quote.dp) : 0;
+            const sentimentScore =
+              typeof sentiment?.companyNewsScore === 'number'
+                ? Number(sentiment.companyNewsScore)
+                : null;
+            return { symbol, movePct, sentimentScore };
+          } catch (error) {
+            console.error('sentiment fetch error', symbol, error);
+            return { symbol, movePct: 0, sentimentScore: null };
+          }
+        })
+      );
+
+      res.json({ items });
+    } catch (error) {
+      console.error('sentiment endpoint error', error);
+      res.status(500).json({ error: 'Failed to fetch sentiment data' });
+    }
+  });
+
+  app.get('/api/markets/heatmap', async (_req, res) => {
+    const sectorProxies = [
+      { sector: 'Technology', symbol: 'XLK' },
+      { sector: 'Energy', symbol: 'XLE' },
+      { sector: 'Financials', symbol: 'XLF' },
+      { sector: 'Healthcare', symbol: 'XLV' },
+      { sector: 'Consumer Discretionary', symbol: 'XLY' },
+      { sector: 'Utilities', symbol: 'XLU' },
+    ];
+
+    try {
+      const sectors = await Promise.all(
+        sectorProxies.map(async ({ sector, symbol }) => {
+          try {
+            const quote = await finnhubGet<{ dp?: number }>('quote', { symbol });
+            const movePct = typeof quote?.dp === 'number' ? Number(quote.dp) : 0;
+            return { sector, symbol, movePct };
+          } catch (error) {
+            console.error('heatmap fetch error', symbol, error);
+            return { sector, symbol, movePct: 0 };
+          }
+        })
+      );
+      res.json({ sectors });
+    } catch (error) {
+      console.error('heatmap endpoint error', error);
+      res.status(500).json({ error: 'Failed to fetch heat map data' });
+    }
+  });
+
+  app.get('/api/markets/earnings', async (req, res) => {
+    const tickers = parseTickersParam(
+      req.query.tickers,
+      ["AAPL", "MSFT", "SHOP", "V"]
+    );
+    const tickerSet = new Set(tickers.map((t) => t.toUpperCase()));
+
+    const now = new Date();
+    const from = now.toISOString().slice(0, 10);
+    const to = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+
+    try {
+      const calendar = await finnhubGet<{
+        earningsCalendar?: Array<{
+          symbol?: string;
+          date?: string;
+          hour?: string;
+          epsActual?: number;
+          epsEstimate?: number;
+        }>;
+      }>('calendar/earnings', { from, to });
+
+      const earnings =
+        calendar.earningsCalendar?.filter((entry) =>
+          entry?.symbol ? tickerSet.has(entry.symbol.toUpperCase()) : false
+        ).map((entry) => ({
+          symbol: entry.symbol || 'N/A',
+          date: entry.date || '',
+          hour: entry.hour || '',
+          epsActual:
+            typeof entry.epsActual === 'number' ? entry.epsActual : null,
+          epsEstimate:
+            typeof entry.epsEstimate === 'number' ? entry.epsEstimate : null,
+        })) ?? [];
+
+      res.json({ earnings });
+    } catch (error) {
+      console.error('earnings endpoint error', error);
+      res.status(500).json({ error: 'Failed to fetch earnings calendar' });
+    }
+  });
+
+  app.get('/api/markets/alerts', async (_req, res) => {
+    const watchlist = ['NVDA', 'TSLA', 'MSFT', 'AAPL'];
+    try {
+      const quotes = await Promise.all(
+        watchlist.map(async (symbol) => {
+          try {
+            const quote = await finnhubGet<{ dp?: number }>('quote', { symbol });
+            const movePct = typeof quote?.dp === 'number' ? Number(quote.dp) : 0;
+            return { symbol, movePct };
+          } catch (error) {
+            console.error('alert quote error', symbol, error);
+            return { symbol, movePct: 0 };
+          }
+        })
+      );
+
+      const alerts = quotes.flatMap(({ symbol, movePct }) => {
+        if (movePct >= 5) {
+          return [{
+            title: `${symbol} +${movePct.toFixed(1)}% intraday`,
+            body: 'Consider trimming / rebalancing exposure.',
+          }];
+        }
+        if (movePct <= -5) {
+          return [{
+            title: `${symbol} ${movePct.toFixed(1)}% vs prior close`,
+            body: 'Review stop / drawdown risk.',
+          }];
+        }
+        return [];
+      });
+
+      res.json({ alerts });
+    } catch (error) {
+      console.error('alerts endpoint error', error);
+      res.status(500).json({ error: 'Failed to fetch alerts' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
+}
+
+async function finnhubGet<T>(path: string, params: Record<string, any> = {}): Promise<T> {
+  if (!FINNHUB_API_KEY) {
+    throw new Error("FINNHUB_API_KEY is not configured");
+  }
+  const cleanPath = path.replace(/^\//, "");
+  const url = `${FINNHUB_BASE_URL}/${cleanPath}`;
+  const response = await axios.get<T>(url, {
+    params: { ...params, token: FINNHUB_API_KEY },
+  });
+  return response.data;
+}
+
+function parseTickersParam(raw: unknown, fallback: string[]): string[] {
+  if (typeof raw === "string" && raw.trim()) {
+    return raw
+      .split(",")
+      .map((val) => val.trim().toUpperCase())
+      .filter(Boolean);
+  }
+  return fallback;
 }
