@@ -134,6 +134,19 @@ section + section {
   gap: 14px;
 }
 
+.brand-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .brand-badge {
   width: 46px;
   height: 46px;
