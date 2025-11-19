@@ -57,6 +57,7 @@ export default function App() {
   const timeLabel = now.toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZoneName: "short",
   });
 
   return (
@@ -68,10 +69,16 @@ export default function App() {
           <div className="brand">
             <div className="brand-badge">💹</div>
             <div className="brand-copy">
-              <div className="brand-row">
-                <p className="eyebrow">AI InvestMate</p>
-              </div>
+              <p className="eyebrow">AI InvestMate</p>
               <h1>Personal wealth copilot</h1>
+              <div className="live-clock" aria-live="polite">
+                <span className="live-dot" aria-hidden />
+                <span className="live-label">Live</span>
+                <span className="live-sep">•</span>
+                <span className="live-date">{dateLabel}</span>
+                <span className="live-sep">·</span>
+                <span className="live-time">{timeLabel}</span>
+              </div>
             </div>
           </div>
           <div className="header-actions">
@@ -82,14 +89,6 @@ export default function App() {
               <a href="#">Goals</a>
               <button className="glow-btn">Upgrade</button>
             </nav>
-            <div className="live-clock" aria-live="polite">
-              <span className="live-dot" aria-hidden />
-              <span className="live-label">Live</span>
-              <span className="live-sep">•</span>
-              <span className="live-date">{dateLabel}</span>
-              <span className="live-sep">·</span>
-              <span className="live-time">{timeLabel}</span>
-            </div>
           </div>
         </header>
 

@@ -106,6 +106,7 @@ function ShellContent() {
   const timeLabel = now.toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZoneName: "short",
   });
 
   return (
@@ -114,9 +115,17 @@ function ShellContent() {
       <header className="header">
         <div className="brand">
           <div className="brand-badge">💹</div>
-          <div>
+          <div className="brand-copy">
             <div style={{ fontSize: 18, fontWeight: 800 }}>AI InvestMate</div>
             <div style={{ fontSize: 12, color: "#94a3b8" }}>Personal finance, simplified</div>
+            <div className="live-clock" aria-live="polite">
+              <span className="live-dot" aria-hidden />
+              <span className="live-label">Live</span>
+              <span className="live-sep">•</span>
+              <span className="live-date">{dateLabel}</span>
+              <span className="live-sep">·</span>
+              <span className="live-time">{timeLabel}</span>
+            </div>
           </div>
         </div>
         <div className="header-actions">
@@ -128,14 +137,6 @@ function ShellContent() {
             <NavLink to="ai">AI Hub</NavLink>
             <NavLink to="profile">Profile</NavLink>
           </nav>
-          <div className="live-clock" aria-live="polite">
-            <span className="live-dot" aria-hidden />
-            <span className="live-label">Live</span>
-            <span className="live-sep">•</span>
-            <span className="live-date">{dateLabel}</span>
-            <span className="live-sep">·</span>
-            <span className="live-time">{timeLabel}</span>
-          </div>
         </div>
       </header>
 

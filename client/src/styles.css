@@ -84,9 +84,10 @@ section + section {
 
 .header-actions {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 10px;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .live-clock {
@@ -144,6 +145,11 @@ section + section {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.brand-copy .live-clock {
+  margin-top: 6px;
+  align-self: flex-start;
 }
 
 .brand-badge {
