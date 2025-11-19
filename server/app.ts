@@ -8,17 +8,28 @@ import {
   fetchFinnhubHistory,
   fetchFinnhubETF,
   fetchFinnhubQuote,
+  fetchFinnhubCandles,
   FinnhubError,
   type CandleRange,
 } from "../shared/finnhub";
+import { aiService } from "./services/openai";
+import redditRoutes from "./redditRoutes";
+import cryptoRoutes from "./cryptoRoutes";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY?.trim();
 const FINNHUB_BASE_URL = "https://finnhub.io/api/v1";
+const TIME_MACHINE_LOOKBACK: Record<string, number> = {
+  "1y": 1,
+  "5y": 5,
+  "10y": 10,
+};
 
 const app = express();
 app.use(express.json());
+app.use(redditRoutes);
+app.use(cryptoRoutes);
 
 // --- Health check ---
 app.get("/api/health", (_req, res) => {

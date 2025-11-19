@@ -6,6 +6,48 @@ const openai = process.env.OPENAI_API_KEY ? new OpenAI({
 }) : null;
 
 class AIService {
+  async summarizeRedditMood(posts: { subreddit: string; title: string; score: number }[]) {
+    if (!posts?.length) {
+      return "Reddit is quiet today across r/stocks, r/investing, and r/wallstreetbets.";
+    }
+
+    const fallback = "Retail chatter looks mixed today—connect OpenAI for a richer read on sentiment.";
+
+    if (!openai) {
+      return fallback;
+    }
+
+    try {
+      const formatted = posts
+        .map(
+          (post) =>
+            `[${post.subreddit}] (${post.score} upvotes) ${post.title}`
+        )
+        .join("\n");
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        temperature: 0.3,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You analyze Reddit finance headlines and explain the overall retail market mood. Be concise (2 sentences max) and avoid hype.",
+          },
+          {
+            role: "user",
+            content: `Here are today's top Reddit posts:\n${formatted}\nSummarize the retail market mood.`,
+          },
+        ],
+      });
+
+      return response.choices?.[0]?.message?.content?.trim() || fallback;
+    } catch (error) {
+      console.error("AI reddit mood error:", error);
+      return fallback;
+    }
+  }
+
   async categorizeTransaction(merchant: string, amount: number, direction: string) {
     if (!openai) {
       // Fallback categorization based on simple rules
@@ -164,6 +206,94 @@ Provide a 10-year projection analysis.`
         riskAssessment: "Unknown",
         recommendations: ["Please try again later"]
       };
+    }
+  }
+
+  async summarizeMarketMood(data: {
+    metrics: { key: string; label: string; value: number }[];
+    watchlistMoves: { symbol: string; movePct: number }[];
+    fallbackHeadline: string;
+    fallbackSummary: string;
+  }) {
+    const fallback = {
+      headline: data.fallbackHeadline,
+      summary: data.fallbackSummary,
+    };
+
+    if (!openai) {
+      return fallback;
+    }
+
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        temperature: 0.2,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are an elite market correspondent. Given intraday mood metrics, craft a one-sentence headline plus a tight summary (2 sentences max) explaining the tape. Respond as JSON with { \"headline\": string, \"summary\": string }.",
+          },
+          {
+            role: "user",
+            content: `Metrics:\n${JSON.stringify(data.metrics, null, 2)}\nWatchlist moves:\n${JSON.stringify(
+              data.watchlistMoves,
+              null,
+              2
+            )}`,
+          },
+        ],
+      });
+
+      const parsed = JSON.parse(response.choices?.[0]?.message?.content || "{}");
+      return {
+        headline: parsed.headline || fallback.headline,
+        summary: parsed.summary || fallback.summary,
+      };
+    } catch (error) {
+      console.error("AI market mood error:", error);
+      return fallback;
+    }
+  }
+
+  async summarizeTimeMachine(data: {
+    timeline: string;
+    results: {
+      symbol: string;
+      finalValue: number;
+      roiPct: number;
+      maxDrawdownPct: number;
+      volatilityPct: number;
+    }[];
+  }) {
+    if (!openai || !data.results.length) {
+      return "Historical replay ready. Plug in an OpenAI key for richer storytelling.";
+    }
+
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        temperature: 0.3,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are an excited markets storyteller. Turn performance stats into a 2-sentence recap highlighting the standout ticker, risk, and context. Keep it hype yet factual.",
+          },
+          {
+            role: "user",
+            content: `Timeline: ${data.timeline}
+Results: ${JSON.stringify(data.results, null, 2)}
+Write two punchy sentences.`,
+          },
+        ],
+      });
+
+      return response.choices?.[0]?.message?.content?.trim() || "";
+    } catch (error) {
+      console.error("AI time machine error:", error);
+      return "Replay generated, but AI storytelling is temporarily offline.";
     }
   }
 }

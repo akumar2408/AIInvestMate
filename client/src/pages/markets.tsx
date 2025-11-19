@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { MarketPulse } from "@/components/MarketPulse";
+import { RedditMoodCard } from "@/components/markets/RedditMoodCard";
+import { CryptoFearGreedCard } from "@/components/markets/CryptoFearGreedCard";
 import { SimulatorPage } from "./simulator";
 
 type MarketsPageProps = {
@@ -298,6 +300,14 @@ export function MarketsPage({ panel }: MarketsPageProps) {
                 {marketLoading ? "Loading sector moves…" : "Heat map data unavailable."}
               </p>
             )}
+          </div>
+
+          <div className="card pad">
+            <div className="title">Alternative sentiment</div>
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+              <RedditMoodCard />
+              <CryptoFearGreedCard />
+            </div>
           </div>
 
           <div className="card pad">
