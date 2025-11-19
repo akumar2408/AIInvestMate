@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { useStore, monthKey } from "../state/store";
-import { AskAIButton } from "../components/AskAIButton";
 
 type FilterView = "all" | "income" | "expense";
 
@@ -16,6 +16,21 @@ type AiModalConfig = {
   prompt: string;
   context: Record<string, any>;
 };
+
+type AiInlineButtonProps = {
+  label: string;
+  onClick: () => void;
+  ariaLabel?: string;
+};
+
+function AiInlineButton({ label, onClick, ariaLabel }: AiInlineButtonProps) {
+  return (
+    <button className="ai-inline" onClick={onClick} aria-label={ariaLabel ?? label}>
+      <Sparkles size={14} />
+      <span>{label}</span>
+    </button>
+  );
+}
 
 export function CashflowPage() {
   const { state, addTxn, addBudget, deleteTxn, deleteBudget } = useStore();
@@ -246,10 +261,10 @@ Rules:
           </div>
 
           <div className="card pad">
-            <div className="title" style={{ gap: 12, alignItems: "center" }}>
-              Transactions cockpit
-              <div style={{ marginLeft: "auto", display: "flex", gap: 12, alignItems: "center" }}>
-                <AskAIButton variant="ghost" label="AI analysis" onClick={launchTransactionsAI} />
+            <div className="title">
+              <span>Transactions cockpit</span>
+              <div className="title-actions">
+                <AiInlineButton label="AI digest" onClick={launchTransactionsAI} />
                 <div className="segment">
                   {(["all", "income", "expense"] as FilterView[]).map((filter) => (
                     <button
@@ -354,14 +369,11 @@ Rules:
 
         <div className="page-stack">
           <div className="card pad">
-            <div className="title" style={{ alignItems: "center", gap: 12 }}>
-              Budgets & category breakdown <strong>{currentMonth}</strong>
-              <AskAIButton
-                variant="ghost"
-                label="AI check"
-                onClick={launchBudgetsAI}
-                style={{ marginLeft: "auto" }}
-              />
+            <div className="title">
+              <span>
+                Budgets & category breakdown <strong>{currentMonth}</strong>
+              </span>
+              <AiInlineButton label="AI check" onClick={launchBudgetsAI} />
             </div>
             {budgetsThisMonth.length ? (
               <div className="timeline-grid">
@@ -455,14 +467,9 @@ Rules:
           </div>
 
           <div className="card pad">
-            <div className="title" style={{ alignItems: "center", gap: 12 }}>
-              Category hotspots
-              <AskAIButton
-                variant="ghost"
-                label="AI pulse"
-                onClick={launchCategoriesAI}
-                style={{ marginLeft: "auto" }}
-              />
+            <div className="title">
+              <span>Category hotspots</span>
+              <AiInlineButton label="AI pulse" onClick={launchCategoriesAI} />
             </div>
             {topCategories.length ? (
               <ul className="list-clean">
