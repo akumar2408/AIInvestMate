@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useStore, monthKey } from "../state/store";
+import { AskAIButton } from "../components/AskAIButton";
 
 type FilterView = "all" | "income" | "expense";
 
@@ -9,6 +10,12 @@ const defaultTxn = () => ({
   category: "General",
   amount: "",
 });
+
+type AiModalConfig = {
+  title: string;
+  prompt: string;
+  context: Record<string, any>;
+};
 
 export function CashflowPage() {
   const { state, addTxn, addBudget, deleteTxn, deleteBudget } = useStore();
@@ -72,6 +79,81 @@ export function CashflowPage() {
   const topCategories = Object.entries(spendByCategory)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5);
+
+  const [aiModal, setAiModal] = useState<AiModalConfig | null>(null);
+  const [aiModalAnswer, setAiModalAnswer] = useState("Tap run to draft a briefing.");
+  const [aiModalLoading, setAiModalLoading] = useState(false);
+  const [aiModalError, setAiModalError] = useState<string | null>(null);
+
+  const runAiModal = async (config: AiModalConfig) => {
+    setAiModal(config);
+    setAiModalAnswer("Generating quick insight…");
+    setAiModalError(null);
+    setAiModalLoading(true);
+    try {
+      const res = await fetch("/api/ai/explain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: config.prompt,
+          context: config.context,
+        }),
+      });
+      if (!res.ok) {
+        throw new Error("Failed to load /api/ai/explain");
+      }
+      const data = await res.json();
+      setAiModalAnswer(data.answer || "No analysis generated.");
+    } catch (error) {
+      console.error("Cashflow AI analysis error", error);
+      setAiModalError("AI analysis is offline. Try again shortly.");
+    } finally {
+      setAiModalLoading(false);
+    }
+  };
+
+  const closeAiModal = () => {
+    setAiModal(null);
+    setAiModalAnswer("Tap run to draft a briefing.");
+    setAiModalError(null);
+  };
+
+  const launchTransactionsAI = () =>
+    runAiModal({
+      title: "AI on recent transactions",
+      prompt:
+        "Explain the latest transactions mix, highlight notable inflows/outflows, and give one actionable recommendation.",
+      context: {
+        month: currentMonth,
+        totals: monthlyStats,
+        sampleTransactions: filteredTxns.slice(0, 12),
+        budgets: budgetsThisMonth,
+      },
+    });
+
+  const launchBudgetsAI = () =>
+    runAiModal({
+      title: "AI on budgets",
+      prompt:
+        "Review these budgets versus actuals, call out risky categories, and suggest the next step to stay on plan.",
+      context: {
+        month: currentMonth,
+        budgets: budgetsThisMonth,
+        spendByCategory,
+      },
+    });
+
+  const launchCategoriesAI = () =>
+    runAiModal({
+      title: "AI on category hotspots",
+      prompt: "Summarize where spending is concentrated and note what to watch this month.",
+      context: {
+        month: currentMonth,
+        topCategories,
+        spendByCategory,
+        totals: monthlyStats,
+      },
+    });
 
   const incomeVsSpend = useMemo(() => {
     const months = Array.from(new Set(state.txns.map((txn) => monthKey(txn.date))))
@@ -156,18 +238,21 @@ export function CashflowPage() {
           </div>
 
           <div className="card pad">
-            <div className="title">
+            <div className="title" style={{ gap: 12, alignItems: "center" }}>
               Transactions cockpit
-              <div className="segment" style={{ marginLeft: "auto" }}>
-                {(["all", "income", "expense"] as FilterView[]).map((filter) => (
-                  <button
-                    key={filter}
-                    className={view === filter ? "active" : ""}
-                    onClick={() => setView(filter)}
-                  >
-                    {filter}
-                  </button>
-                ))}
+              <div style={{ marginLeft: "auto", display: "flex", gap: 12, alignItems: "center" }}>
+                <AskAIButton variant="ghost" label="AI analysis" onClick={launchTransactionsAI} />
+                <div className="segment">
+                  {(["all", "income", "expense"] as FilterView[]).map((filter) => (
+                    <button
+                      key={filter}
+                      className={view === filter ? "active" : ""}
+                      onClick={() => setView(filter)}
+                    >
+                      {filter}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
             <div className="toolbar" style={{ marginBottom: 16 }}>
@@ -261,8 +346,14 @@ export function CashflowPage() {
 
         <div className="page-stack">
           <div className="card pad">
-            <div className="title">
+            <div className="title" style={{ alignItems: "center", gap: 12 }}>
               Budgets & category breakdown <strong>{currentMonth}</strong>
+              <AskAIButton
+                variant="ghost"
+                label="AI check"
+                onClick={launchBudgetsAI}
+                style={{ marginLeft: "auto" }}
+              />
             </div>
             {budgetsThisMonth.length ? (
               <div className="timeline-grid">
@@ -356,7 +447,15 @@ export function CashflowPage() {
           </div>
 
           <div className="card pad">
-            <div className="title">Category hotspots</div>
+            <div className="title" style={{ alignItems: "center", gap: 12 }}>
+              Category hotspots
+              <AskAIButton
+                variant="ghost"
+                label="AI pulse"
+                onClick={launchCategoriesAI}
+                style={{ marginLeft: "auto" }}
+              />
+            </div>
             {topCategories.length ? (
               <ul className="list-clean">
                 {topCategories.map(([category, amount]) => (
@@ -375,6 +474,41 @@ export function CashflowPage() {
           </div>
         </div>
       </div>
+      {aiModal && (
+        <div className="ai-modal-overlay" role="dialog" aria-modal="true">
+          <div className="ai-modal">
+            <div className="ai-modal__header">
+              <div>
+                <p className="muted tiny">AI quick brief</p>
+                <strong>{aiModal.title}</strong>
+              </div>
+              <button className="ghost" onClick={closeAiModal} aria-label="Close AI analysis">
+                Close
+              </button>
+            </div>
+            <div className="ai-modal__body">
+              {aiModalError ? (
+                <p className="status-negative">{aiModalError}</p>
+              ) : (
+                <p className="muted" style={{ whiteSpace: "pre-line" }}>
+                  {aiModalAnswer}
+                </p>
+              )}
+            </div>
+            <div className="ai-modal__footer">
+              <button
+                className="btn"
+                onClick={() => {
+                  if (aiModal) runAiModal(aiModal);
+                }}
+                disabled={aiModalLoading}
+              >
+                {aiModalLoading ? "Analyzing…" : "Refresh insight"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
