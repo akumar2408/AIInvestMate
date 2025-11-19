@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import AIChat from "./components/AIChat";
 import "./styles.css";
 
@@ -41,6 +41,24 @@ const agenda = [
 ];
 
 export default function App() {
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const dateLabel = now.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+
+  const timeLabel = now.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
   return (
     <div className="app-shell">
       <div className="plasma plasma-one" aria-hidden />
@@ -54,13 +72,23 @@ export default function App() {
               <h1>Personal wealth copilot</h1>
             </div>
           </div>
-          <nav className="nav">
-            <a href="#">Dashboard</a>
-            <a href="#">Cash flow</a>
-            <a href="#">Investing</a>
-            <a href="#">Goals</a>
-            <button className="glow-btn">Upgrade</button>
-          </nav>
+          <div className="header-actions">
+            <div className="live-clock" aria-live="polite">
+              <span className="live-dot" aria-hidden />
+              <span className="live-label">Live</span>
+              <span className="live-sep">•</span>
+              <span className="live-date">{dateLabel}</span>
+              <span className="live-sep">·</span>
+              <span className="live-time">{timeLabel}</span>
+            </div>
+            <nav className="nav">
+              <a href="#">Dashboard</a>
+              <a href="#">Cash flow</a>
+              <a href="#">Investing</a>
+              <a href="#">Goals</a>
+              <button className="glow-btn">Upgrade</button>
+            </nav>
+          </div>
         </header>
 
         <section className="hero-grid">
