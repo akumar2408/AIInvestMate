@@ -63,10 +63,33 @@ export function ProfilePage() {
     URL.revokeObjectURL(url);
   };
 
+  const profileStats = [
+    { label: "Goals tracked", value: state.goals.length },
+    { label: "Budgets", value: state.budgets.length },
+    { label: "AI chats", value: state.aiLogs?.length || 0 },
+    { label: "Data exports", value: "Anytime" },
+  ];
+
   return (
     <section style={{ marginTop: 12 }}>
       <div className="page-split">
         <div className="page-stack">
+          <div className="card pad">
+            <div className="title">Account overview</div>
+            <div className="profile-grid">
+              {profileStats.map((stat) => (
+                <div key={stat.label} className="goal-card" style={{ cursor: "default" }}>
+                  <h4>{stat.value}</h4>
+                  <p className="muted tiny">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+            <div className="pill-row" style={{ marginTop: 16 }}>
+              <span className="pill">Plan: {state.profile ? "Personalized" : "Starter"}</span>
+              <span className="pill">User ID: {state.userId || "local"}</span>
+            </div>
+          </div>
+
           <div className="card pad">
             <div className="title">Data export</div>
             <p className="subtle">Own your data. Download everything anytime.</p>

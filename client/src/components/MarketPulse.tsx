@@ -6,7 +6,7 @@ const DEFAULT_TICKERS = ["SPY", "QQQ", "VOO"];
 const QUICK_TICKERS = ["AAPL", "MSFT", "NVDA", "TSLA", "PLTR", "GLD"];
 
 // 1long
-const PAGE_SIZE = 3;
+const PAGE_SIZE = 4;
 
 export function MarketPulse() {
   const [input, setInput] = useState("");
@@ -17,7 +17,7 @@ export function MarketPulse() {
   }, [state.marketWatchlist]);
   const [page, setPage] = useState(1);
 
-  const totalPages = Math.max(1, Math.ceil(tickers.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(Math.max(1, tickers.length) / PAGE_SIZE));
   const start = (page - 1) * PAGE_SIZE;
   const visibleTickers = tickers.slice(start, start + PAGE_SIZE);
 

@@ -6,7 +6,9 @@ const DEFAULT_WATCHLIST = ["SPY", "QQQ", "VOO", "AAPL"];
 
 export function Dashboard() {
   const { state } = useStore();
-  const watchlist = state.marketWatchlist && state.marketWatchlist.length ? state.marketWatchlist : DEFAULT_WATCHLIST;
+  const watchlist = Array.isArray(state.marketWatchlist)
+    ? state.marketWatchlist
+    : DEFAULT_WATCHLIST;
   const visibleWatch = watchlist.slice(0, 4);
   const thisMonth = new Date().toISOString().slice(0, 7);
   const txnsThisMonth = state.txns.filter((txn) => monthKey(txn.date) === thisMonth);
@@ -17,7 +19,7 @@ export function Dashboard() {
   const savings = Math.max(0, income - spend);
   const savingsRate = income ? Math.round((savings / income) * 100) : 0;
   const runwayMonths = spend ? Math.max(1, Math.round((state.cash || 12000) / spend)) : 12;
-  const netWorth = (state.cash || 18000) + state.goals.reduce((total, goal) => total + goal.current, 0);
+  const netWorth = (state.cash ?? 0) + state.goals.reduce((total, goal) => total + goal.current, 0);
 
   const budgetsByCat = useMemo(() => {
     return txnsThisMonth
@@ -71,12 +73,6 @@ export function Dashboard() {
       title: "Markets",
       detail: visibleWatch.map((symbol) => symbol).join(" · "),
     },
-  ];
-
-  const shortcuts = [
-    { label: "Go to Markets", target: "#markets" },
-    { label: "Go to Simulator", target: "#markets?panel=sim" },
-    { label: "Open AI Hub", target: "#ai" },
   ];
 
   return (
@@ -138,24 +134,6 @@ export function Dashboard() {
           ) : (
             <p className="muted">No tickers selected yet. Add some from the Markets tab.</p>
           )}
-        </div>
-
-        <div className="card pad">
-          <div className="title">Shortcuts</div>
-          <p className="subtle">Jump directly into deeper tools.</p>
-          <div className="pill-row" style={{ marginTop: 16 }}>
-            {shortcuts.map((shortcut) => (
-              <button
-                key={shortcut.label}
-                className="chip"
-                onClick={() => {
-                  window.location.hash = shortcut.target;
-                }}
-              >
-                {shortcut.label}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
 
@@ -221,22 +199,6 @@ export function Dashboard() {
           ) : (
             <p className="muted">No anomalies detected.</p>
           )}
-        </div>
-
-        <div className="card pad">
-          <div className="title">Planning momentum</div>
-          <p className="subtle">
-            {state.goals.length
-              ? `${state.goals.length} goals and ${state.budgets.length} budgets synced`
-              : "Add a goal or budget to unlock personalized planning."}
-          </p>
-          <div className="pill-row" style={{ marginTop: 14 }}>
-            {["Review cashflow", "Add goal", "Ask AI for a recap"].map((pill) => (
-              <span key={pill} className="pill">
-                {pill}
-              </span>
-            ))}
-          </div>
         </div>
       </div>
     </section>

@@ -194,6 +194,18 @@ export function GoalsPlanningPage() {
               <p className="muted">No goals yet.</p>
             )}
           </div>
+
+          <div className="card pad">
+            <div className="title">Planning playbooks</div>
+            <ul className="list-clean">
+              {planIdeas.map((idea) => (
+                <li key={idea.title}>
+                  <strong>{idea.title}</strong>
+                  <p className="muted tiny">{idea.detail}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
 
         <div className="page-stack">
@@ -272,17 +284,6 @@ export function GoalsPlanningPage() {
             )}
           </div>
 
-          <div className="card pad">
-            <div className="title">Planning playbooks</div>
-            <ul className="list-clean">
-              {planIdeas.map((idea) => (
-                <li key={idea.title}>
-                  <strong>{idea.title}</strong>
-                  <p className="muted tiny">{idea.detail}</p>
-                </li>
-              ))}
-            </ul>
-          </div>
         </div>
       </div>
     </section>

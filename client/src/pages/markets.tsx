@@ -128,7 +128,7 @@ function AnalystPanel({ watchlist }: { watchlist: SentimentItem[] }) {
 
 export function MarketsPage({ panel }: MarketsPageProps) {
   const highlightSimulator = panel === "sim";
-  const [showSimulator, setShowSimulator] = useState(panel === "sim");
+  const [simModalOpen, setSimModalOpen] = useState(panel === "sim");
   const [sentimentItems, setSentimentItems] = useState<SentimentItem[]>([]);
   const [heatmapSectors, setHeatmapSectors] = useState<HeatmapSector[]>([]);
   const [earnings, setEarnings] = useState<EarningsItem[]>([]);
@@ -136,16 +136,16 @@ export function MarketsPage({ panel }: MarketsPageProps) {
   const [marketLoading, setMarketLoading] = useState(true);
 
   useEffect(() => {
-    setShowSimulator(panel === "sim");
+    setSimModalOpen(panel === "sim");
   }, [panel]);
 
   const openSimulator = () => {
-    setShowSimulator(true);
+    setSimModalOpen(true);
     window.location.hash = "#markets?panel=sim";
   };
 
   const closeSimulator = () => {
-    setShowSimulator(false);
+    setSimModalOpen(false);
     if (window.location.hash.includes("panel=sim")) {
       window.location.hash = "#markets";
     }
@@ -381,24 +381,6 @@ export function MarketsPage({ panel }: MarketsPageProps) {
 
           <AnalystPanel watchlist={sentimentItems} />
 
-          {showSimulator && (
-            <div className="card pad" id="simulator-panel">
-              <div className="title">
-                Portfolio simulator
-                <button
-                  className="ghost"
-                  onClick={closeSimulator}
-                  style={{ marginLeft: "auto", fontSize: 12, padding: "4px 8px" }}
-                >
-                  Close
-                </button>
-              </div>
-              <div className="simulator-embed" style={{ marginTop: 12, maxHeight: 620, overflowY: "auto" }}>
-                <SimulatorPage />
-              </div>
-            </div>
-          )}
-
           <div className="card pad">
             <div className="title">Predictive commentary</div>
             <div className="pill-row">
@@ -411,6 +393,25 @@ export function MarketsPage({ panel }: MarketsPageProps) {
           </div>
         </div>
       </div>
+
+      {simModalOpen && (
+        <div className="sim-modal-overlay" role="dialog" aria-modal="true">
+          <div className="sim-modal">
+            <div className="sim-modal__header">
+              <div>
+                <h3>Portfolio simulator</h3>
+                <p className="muted tiny">Model contributions, returns, and goal timelines without leaving Markets.</p>
+              </div>
+              <button className="ghost" onClick={closeSimulator}>
+                Close
+              </button>
+            </div>
+            <div className="sim-modal__body">
+              <SimulatorPage />
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
