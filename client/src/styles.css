@@ -84,10 +84,9 @@ section + section {
 
 .header-actions {
   display: flex;
-  align-items: center;
-  gap: 18px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
 }
 
 .live-clock {

@@ -70,14 +70,6 @@ export default function App() {
             <div className="brand-copy">
               <div className="brand-row">
                 <p className="eyebrow">AI InvestMate</p>
-                <div className="live-clock" aria-live="polite">
-                  <span className="live-dot" aria-hidden />
-                  <span className="live-label">Live</span>
-                  <span className="live-sep">•</span>
-                  <span className="live-date">{dateLabel}</span>
-                  <span className="live-sep">·</span>
-                  <span className="live-time">{timeLabel}</span>
-                </div>
               </div>
               <h1>Personal wealth copilot</h1>
             </div>
@@ -90,6 +82,14 @@ export default function App() {
               <a href="#">Goals</a>
               <button className="glow-btn">Upgrade</button>
             </nav>
+            <div className="live-clock" aria-live="polite">
+              <span className="live-dot" aria-hidden />
+              <span className="live-label">Live</span>
+              <span className="live-sep">•</span>
+              <span className="live-date">{dateLabel}</span>
+              <span className="live-sep">·</span>
+              <span className="live-time">{timeLabel}</span>
+            </div>
           </div>
         </header>
 

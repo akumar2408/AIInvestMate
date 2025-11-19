@@ -114,29 +114,29 @@ function ShellContent() {
       <header className="header">
         <div className="brand">
           <div className="brand-badge">💹</div>
-          <div className="brand-copy">
-            <div className="brand-row">
-              <div style={{ fontSize: 18, fontWeight: 800 }}>AI InvestMate</div>
-              <div className="live-clock" aria-live="polite">
-                <span className="live-dot" aria-hidden />
-                <span className="live-label">Live</span>
-                <span className="live-sep">•</span>
-                <span className="live-date">{dateLabel}</span>
-                <span className="live-sep">·</span>
-                <span className="live-time">{timeLabel}</span>
-              </div>
-            </div>
-            <div style={{ fontSize: 12, color: '#94a3b8' }}>Personal finance, simplified</div>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 800 }}>AI InvestMate</div>
+            <div style={{ fontSize: 12, color: "#94a3b8" }}>Personal finance, simplified</div>
           </div>
         </div>
-        <nav className="nav">
-          <NavLink to="dashboard">Dashboard</NavLink>
-          <NavLink to="cashflow">Cashflow</NavLink>
-          <NavLink to="planning">Goals &amp; Planning</NavLink>
-          <NavLink to="markets">Markets 🔥</NavLink>
-          <NavLink to="ai">AI Hub</NavLink>
-          <NavLink to="profile">Profile</NavLink>
-        </nav>
+        <div className="header-actions">
+          <nav className="nav">
+            <NavLink to="dashboard">Dashboard</NavLink>
+            <NavLink to="cashflow">Cashflow</NavLink>
+            <NavLink to="planning">Goals &amp; Planning</NavLink>
+            <NavLink to="markets">Markets 🔥</NavLink>
+            <NavLink to="ai">AI Hub</NavLink>
+            <NavLink to="profile">Profile</NavLink>
+          </nav>
+          <div className="live-clock" aria-live="polite">
+            <span className="live-dot" aria-hidden />
+            <span className="live-label">Live</span>
+            <span className="live-sep">•</span>
+            <span className="live-date">{dateLabel}</span>
+            <span className="live-sep">·</span>
+            <span className="live-time">{timeLabel}</span>
+          </div>
+        </div>
       </header>
 
       {route === "dashboard" && <Dashboard />}
