@@ -91,11 +91,19 @@ export function CashflowPage() {
     setAiModalError(null);
     setAiModalLoading(true);
     try {
+      const compactPrompt = `${config.prompt}
+
+Rules:
+- Keep it under 120 words.
+- Start with one crisp sentence, then 3 short bullet points.
+- Reference transactions, budgets, or categories only if provided.
+- End with one \"Watch next\" bullet.`;
+
       const res = await fetch("/api/ai/explain", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: config.prompt,
+          prompt: compactPrompt,
           context: config.context,
         }),
       });
