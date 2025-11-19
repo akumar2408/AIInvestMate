@@ -29,6 +29,7 @@ function ShellContent() {
   const { initFromSupabase, clearCloudState } = useStore();
   const initRef = useRef(initFromSupabase);
   const clearRef = useRef(clearCloudState);
+  const [now, setNow] = useState(new Date());
 
   useEffect(() => {
     initRef.current = initFromSupabase;
@@ -37,6 +38,11 @@ function ShellContent() {
   useEffect(() => {
     clearRef.current = clearCloudState;
   }, [clearCloudState]);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const onHash = () => {
@@ -91,14 +97,35 @@ function ShellContent() {
     );
   };
 
+  const dateLabel = now.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+
+  const timeLabel = now.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
   return (
     <div className="container">
       <OnboardingWizard />
       <header className="header">
         <div className="brand">
           <div className="brand-badge">💹</div>
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 800 }}>AI InvestMate</div>
+          <div className="brand-copy">
+            <div className="brand-row">
+              <div style={{ fontSize: 18, fontWeight: 800 }}>AI InvestMate</div>
+              <div className="live-clock" aria-live="polite">
+                <span className="live-dot" aria-hidden />
+                <span className="live-label">Live</span>
+                <span className="live-sep">•</span>
+                <span className="live-date">{dateLabel}</span>
+                <span className="live-sep">·</span>
+                <span className="live-time">{timeLabel}</span>
+              </div>
+            </div>
             <div style={{ fontSize: 12, color: '#94a3b8' }}>Personal finance, simplified</div>
           </div>
         </div>
