@@ -3,6 +3,7 @@ import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 import OpenAI from "openai";
+import axios from "axios";
 import {
   fetchFinnhubHistory,
   fetchFinnhubETF,
@@ -13,6 +14,8 @@ import {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY?.trim();
+const FINNHUB_BASE_URL = "https://finnhub.io/api/v1";
 
 const app = express();
 app.use(express.json());
@@ -121,6 +124,169 @@ app.get("/api/stocks/history", async (req, res) => {
   }
 });
 
+// --- Markets: sentiment watchlist ---
+app.get("/api/markets/sentiment", async (req, res) => {
+  try {
+    const tickers = parseTickersParam(
+      req.query.tickers,
+      ["NVDA", "TSLA", "MSFT", "NFLX"]
+    );
+
+    const items = await Promise.all(
+      tickers.map(async (symbol) => {
+        try {
+          const [quote, sentiment] = await Promise.all([
+            finnhubGet<{ dp?: number }>("quote", { symbol }),
+            finnhubGet<{ companyNewsScore?: number }>("news-sentiment", {
+              symbol,
+            }),
+          ]);
+
+          const movePct =
+            typeof quote?.dp === "number" ? Number(quote.dp) : 0;
+          const sentimentScore =
+            typeof sentiment?.companyNewsScore === "number"
+              ? Number(sentiment.companyNewsScore)
+              : null;
+          return { symbol, movePct, sentimentScore };
+        } catch (error) {
+          console.error("sentiment fetch error", symbol, error);
+          return { symbol, movePct: 0, sentimentScore: null };
+        }
+      })
+    );
+
+    res.json({ items });
+  } catch (error) {
+    console.error("sentiment endpoint error", error);
+    res.status(500).json({ error: "Failed to fetch sentiment data" });
+  }
+});
+
+// --- Markets: sector heat map ---
+app.get("/api/markets/heatmap", async (_req, res) => {
+  const sectorProxies = [
+    { sector: "Technology", symbol: "XLK" },
+    { sector: "Energy", symbol: "XLE" },
+    { sector: "Financials", symbol: "XLF" },
+    { sector: "Healthcare", symbol: "XLV" },
+    { sector: "Consumer Discretionary", symbol: "XLY" },
+    { sector: "Utilities", symbol: "XLU" },
+  ];
+
+  try {
+    const sectors = await Promise.all(
+      sectorProxies.map(async ({ sector, symbol }) => {
+        try {
+          const quote = await finnhubGet<{ dp?: number }>("quote", { symbol });
+          const movePct =
+            typeof quote?.dp === "number" ? Number(quote.dp) : 0;
+          return { sector, symbol, movePct };
+        } catch (error) {
+          console.error("heatmap fetch error", symbol, error);
+          return { sector, symbol, movePct: 0 };
+        }
+      })
+    );
+    res.json({ sectors });
+  } catch (error) {
+    console.error("heatmap endpoint error", error);
+    res.status(500).json({ error: "Failed to fetch heat map data" });
+  }
+});
+
+// --- Markets: earnings calendar ---
+app.get("/api/markets/earnings", async (req, res) => {
+  const tickers = parseTickersParam(
+    req.query.tickers,
+    ["AAPL", "MSFT", "SHOP", "V"]
+  );
+  const tickerSet = new Set(tickers.map((t) => t.toUpperCase()));
+
+  const now = new Date();
+  const from = now.toISOString().slice(0, 10);
+  const to = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+
+  try {
+    const calendar = await finnhubGet<{
+      earningsCalendar?: Array<{
+        symbol?: string;
+        date?: string;
+        hour?: string;
+        epsActual?: number;
+        epsEstimate?: number;
+      }>;
+    }>("calendar/earnings", { from, to });
+
+    const earnings =
+      calendar.earningsCalendar
+        ?.filter((entry) =>
+          entry?.symbol ? tickerSet.has(entry.symbol.toUpperCase()) : false
+        )
+        .map((entry) => ({
+          symbol: entry.symbol || "N/A",
+          date: entry.date || "",
+          hour: entry.hour || "",
+          epsActual:
+            typeof entry.epsActual === "number" ? entry.epsActual : null,
+          epsEstimate:
+            typeof entry.epsEstimate === "number" ? entry.epsEstimate : null,
+        })) ?? [];
+
+    res.json({ earnings });
+  } catch (error) {
+    console.error("earnings endpoint error", error);
+    res.status(500).json({ error: "Failed to fetch earnings calendar" });
+  }
+});
+
+// --- Markets: alerts ---
+app.get("/api/markets/alerts", async (_req, res) => {
+  const watchlist = ["NVDA", "TSLA", "MSFT", "AAPL"];
+  try {
+    const quotes = await Promise.all(
+      watchlist.map(async (symbol) => {
+        try {
+          const quote = await finnhubGet<{ dp?: number }>("quote", { symbol });
+          const movePct =
+            typeof quote?.dp === "number" ? Number(quote.dp) : 0;
+          return { symbol, movePct };
+        } catch (error) {
+          console.error("alert quote error", symbol, error);
+          return { symbol, movePct: 0 };
+        }
+      })
+    );
+
+    const alerts = quotes.flatMap(({ symbol, movePct }) => {
+      if (movePct >= 5) {
+        return [
+          {
+            title: `${symbol} +${movePct.toFixed(1)}% intraday`,
+            body: "Consider trimming / rebalancing exposure.",
+          },
+        ];
+      }
+      if (movePct <= -5) {
+        return [
+          {
+            title: `${symbol} ${movePct.toFixed(1)}% vs prior close`,
+            body: "Review stop / drawdown risk.",
+          },
+        ];
+      }
+      return [];
+    });
+
+    res.json({ alerts });
+  } catch (error) {
+    console.error("alerts endpoint error", error);
+    res.status(500).json({ error: "Failed to fetch alerts" });
+  }
+});
+
 // Serve client in production
 const clientDist = path.resolve(__dirname, "../dist/public");
 app.use(express.static(clientDist));
@@ -134,6 +300,34 @@ app.listen(PORT, "0.0.0.0", () => {
 });
 
 // ---- Helpers ----
+async function finnhubGet<T>(
+  path: string,
+  params: Record<string, any> = {}
+): Promise<T> {
+  if (!FINNHUB_API_KEY) {
+    throw new Error("FINNHUB_API_KEY is not configured");
+  }
+  const cleanPath = path.replace(/^\//, "");
+  const url = `${FINNHUB_BASE_URL}/${cleanPath}`;
+  const response = await axios.get<T>(url, {
+    params: { ...params, token: FINNHUB_API_KEY },
+  });
+  return response.data;
+}
+
+function parseTickersParam(
+  raw: unknown,
+  fallback: string[]
+): string[] {
+  if (typeof raw === "string" && raw.trim()) {
+    return raw
+      .split(",")
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean);
+  }
+  return fallback;
+}
+
 function mockAIReply(message: string) {
   const lower = message.toLowerCase();
   let snapshot = "Income steady | Spending trending normal | Savings on track";

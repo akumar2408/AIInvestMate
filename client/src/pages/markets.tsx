@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { MarketPulse } from "@/components/MarketPulse";
 import { SimulatorPage } from "./simulator";
 
@@ -6,34 +6,30 @@ type MarketsPageProps = {
   panel?: string;
 };
 
-const sentimentWatchlist = [
-  { symbol: "NVDA", move: "+2.8%", sentiment: "Bullish momentum", score: 82 },
-  { symbol: "TSLA", move: "-1.2%", sentiment: "Volatile · earnings soon", score: 58 },
-  { symbol: "MSFT", move: "+0.9%", sentiment: "AI strength holding", score: 76 },
-  { symbol: "NFLX", move: "+1.4%", sentiment: "Subscriber beat follow-through", score: 71 },
-];
+type SentimentItem = {
+  symbol: string;
+  movePct: number;
+  sentimentScore: number | null;
+};
 
-const heatMap = [
-  { sector: "Technology", change: "+1.8%", tone: "Bullish" },
-  { sector: "Energy", change: "-0.6%", tone: "Taking a breather" },
-  { sector: "Financials", change: "+0.4%", tone: "Neutral" },
-  { sector: "Healthcare", change: "+0.9%", tone: "Rotation in play" },
-  { sector: "Consumer Discretionary", change: "+0.7%", tone: "Reopening strength" },
-  { sector: "Utilities", change: "-0.3%", tone: "Rates pressure" },
-];
+type HeatmapSector = {
+  sector: string;
+  symbol: string;
+  movePct: number;
+};
 
-const earningsCalendar = [
-  { company: "Apple", date: "Jan 25", focus: "iPhone demand commentary" },
-  { company: "Microsoft", date: "Jan 26", focus: "Azure & Copilot run-rate" },
-  { company: "Shopify", date: "Jan 27", focus: "GMV + margins" },
-  { company: "Visa", date: "Jan 28", focus: "Cross-border volumes" },
-];
+type EarningsItem = {
+  symbol: string;
+  date: string;
+  hour: string;
+  epsActual: number | null;
+  epsEstimate: number | null;
+};
 
-const alertFeed = [
-  { title: "Watchlist breach", detail: "NVDA +5% intraday · trim to rebalance?", type: "positive" },
-  { title: "Drawdown risk", detail: "TSLA -12% vs 50dma · consider stop review", type: "negative" },
-  { title: "Sentiment spike", detail: "Semiconductors heat-map 92/100", type: "positive" },
-];
+type AlertItem = {
+  title: string;
+  body: string;
+};
 
 const commentaryStrip = [
   "FOMC odds now pricing 2 cuts by September.",
@@ -48,7 +44,7 @@ const backtests = [
   { name: "Green Energy", cagr: "10.2%", drawdown: "-11%", insight: "Momentum returning over last 60d" },
 ];
 
-function AnalystPanel() {
+function AnalystPanel({ watchlist }: { watchlist: SentimentItem[] }) {
   const [question, setQuestion] = useState("What is sentiment saying about my watchlist?");
   const [answer, setAnswer] = useState("Tap ask to get the latest AI analyst briefing.");
   const [loading, setLoading] = useState(false);
@@ -65,7 +61,7 @@ function AnalystPanel() {
         body: JSON.stringify({
           prompt: text,
           context: {
-            watchlist: sentimentWatchlist,
+            watchlist,
             macro: commentaryStrip,
           },
         }),
@@ -133,6 +129,11 @@ function AnalystPanel() {
 export function MarketsPage({ panel }: MarketsPageProps) {
   const highlightSimulator = panel === "sim";
   const [showSimulator, setShowSimulator] = useState(panel === "sim");
+  const [sentimentItems, setSentimentItems] = useState<SentimentItem[]>([]);
+  const [heatmapSectors, setHeatmapSectors] = useState<HeatmapSector[]>([]);
+  const [earnings, setEarnings] = useState<EarningsItem[]>([]);
+  const [alerts, setAlerts] = useState<AlertItem[]>([]);
+  const [marketLoading, setMarketLoading] = useState(true);
 
   useEffect(() => {
     setShowSimulator(panel === "sim");
@@ -149,6 +150,64 @@ export function MarketsPage({ panel }: MarketsPageProps) {
       window.location.hash = "#markets";
     }
   };
+
+  const loadMarketData = useCallback(async () => {
+    const fetchJson = async (url: string) => {
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`Failed to load ${url}`);
+      }
+      return res.json();
+    };
+
+    const [sentimentRes, heatmapRes, earningsRes, alertsRes] = await Promise.all([
+      fetchJson("/api/markets/sentiment"),
+      fetchJson("/api/markets/heatmap"),
+      fetchJson("/api/markets/earnings"),
+      fetchJson("/api/markets/alerts"),
+    ]);
+
+    return {
+      sentiment: Array.isArray(sentimentRes?.items) ? sentimentRes.items : [],
+      heatmap: Array.isArray(heatmapRes?.sectors) ? heatmapRes.sectors : [],
+      earnings: Array.isArray(earningsRes?.earnings) ? earningsRes.earnings : [],
+      alerts: Array.isArray(alertsRes?.alerts) ? alertsRes.alerts : [],
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const fetchData = async () => {
+      setMarketLoading(true);
+      try {
+        const data = await loadMarketData();
+        if (!active) return;
+        setSentimentItems(data.sentiment);
+        setHeatmapSectors(data.heatmap);
+        setEarnings(data.earnings);
+        setAlerts(data.alerts);
+      } catch (error) {
+        if (active) {
+          console.error("Markets data load failed", error);
+          setSentimentItems([]);
+          setHeatmapSectors([]);
+          setEarnings([]);
+          setAlerts([]);
+        }
+      } finally {
+        if (active) {
+          setMarketLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+    const interval = setInterval(fetchData, 60_000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [loadMarketData]);
 
   return (
     <section style={{ marginTop: 12 }}>
@@ -185,69 +244,104 @@ export function MarketsPage({ panel }: MarketsPageProps) {
 
           <div className="card pad" id="watchlist">
             <div className="title">Sentiment-powered watchlist</div>
-            <div className="market-grid">
-              {sentimentWatchlist.map((row) => (
-                <div key={row.symbol} className="market-card">
-                  <div className="market-symbol">
-                    <span>{row.symbol}</span>
-                    <span className="badge">{row.sentiment}</span>
-                  </div>
-                  <div className="market-price-row">
-                    <div>
-                      <p className="muted tiny">Move</p>
-                      <div className="market-price">{row.move}</div>
+            {sentimentItems.length ? (
+              <div className="market-grid">
+                {sentimentItems.map((row) => {
+                  const moveLabel = formatMove(row.movePct);
+                  const badge = describeSentiment(row.movePct, row.sentimentScore);
+                  const score =
+                    row.sentimentScore != null ? `${Math.round(row.sentimentScore * 100)} score` : "Score —";
+                  return (
+                    <div key={row.symbol} className="market-card">
+                      <div className="market-symbol">
+                        <span>{row.symbol}</span>
+                        <span className="badge">{badge}</span>
+                      </div>
+                      <div className="market-price-row">
+                        <div>
+                          <p className="muted tiny">Move</p>
+                          <div className="market-price">{moveLabel}</div>
+                        </div>
+                        <div className={`market-change ${row.movePct < 0 ? "neg" : "pos"}`}>
+                          {score}
+                        </div>
+                      </div>
                     </div>
-                    <div className={`market-change ${row.move.includes("-") ? "neg" : "pos"}`}>
-                      Score {row.score}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="muted tiny">
+                {marketLoading ? "Loading market data…" : "Sentiment data unavailable right now."}
+              </p>
+            )}
           </div>
 
           <div className="card pad" id="heatmap">
             <div className="title">Market heat map</div>
-            <div className="heatmap">
-              {heatMap.map((tile) => (
-                <div key={tile.sector} className="heat-tile">
-                  <strong>{tile.sector}</strong>
-                  <p className={tile.change.includes("-") ? "status-negative" : "status-positive"}>{tile.change}</p>
-                  <p className="muted tiny">{tile.tone}</p>
-                </div>
-              ))}
-            </div>
+            {heatmapSectors.length ? (
+              <div className="heatmap">
+                {heatmapSectors.map((tile) => {
+                  const moveLabel = formatMove(tile.movePct);
+                  const tone = describeTone(tile.movePct);
+                  return (
+                    <div key={tile.sector} className="heat-tile">
+                      <strong>{tile.sector}</strong>
+                      <p className={tile.movePct < 0 ? "status-negative" : "status-positive"}>{moveLabel}</p>
+                      <p className="muted tiny">{tone}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="muted tiny">
+                {marketLoading ? "Loading sector moves…" : "Heat map data unavailable."}
+              </p>
+            )}
           </div>
 
           <div className="card pad">
             <div className="title">Alert center</div>
-            <ul className="list-clean">
-              {alertFeed.map((alert) => (
-                <li key={alert.title}>
-                  <strong className={alert.type === "negative" ? "status-negative" : "status-positive"}>
-                    {alert.title}
-                  </strong>
-                  <p className="muted tiny">{alert.detail}</p>
-                </li>
-              ))}
-            </ul>
+            {alerts.length ? (
+              <ul className="list-clean">
+                {alerts.map((alert) => (
+                  <li key={alert.title}>
+                    <strong className={alert.title.includes("-") ? "status-negative" : "status-positive"}>
+                      {alert.title}
+                    </strong>
+                    <p className="muted tiny">{alert.body}</p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="muted tiny">
+                {marketLoading ? "Watching for live alerts…" : "No alerts detected right now."}
+              </p>
+            )}
           </div>
         </div>
 
         <div className="page-stack">
           <div className="card pad" id="earnings">
             <div className="title">Earnings calendar</div>
-            <div className="timeline-grid">
-              {earningsCalendar.map((event) => (
-                <div key={event.company} className="timeline-row">
-                  <div>
-                    <strong>{event.company}</strong>
-                    <p className="muted tiny">{event.focus}</p>
+            {earnings.length ? (
+              <div className="timeline-grid">
+                {earnings.map((event) => (
+                  <div key={`${event.symbol}-${event.date}-${event.hour}`} className="timeline-row">
+                    <div>
+                      <strong>{event.symbol}</strong>
+                      <p className="muted tiny">
+                        {event.date} · {event.hour || "TBD"} · {formatEarningsLine(event)}
+                      </p>
+                    </div>
                   </div>
-                  <span>{event.date}</span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="muted tiny">
+                {marketLoading ? "Fetching earnings window…" : "No upcoming earnings in the next 30 days."}
+              </p>
+            )}
           </div>
 
           <div
@@ -280,16 +374,12 @@ export function MarketsPage({ panel }: MarketsPageProps) {
                 </div>
               ))}
             </div>
-            <button
-              className="glow-btn"
-              style={{ marginTop: 16 }}
-              onClick={openSimulator}
-            >
+            <button className="glow-btn" style={{ marginTop: 16 }} onClick={openSimulator}>
               Launch simulator
             </button>
           </div>
 
-          <AnalystPanel />
+          <AnalystPanel watchlist={sentimentItems} />
 
           {showSimulator && (
             <div className="card pad" id="simulator-panel">
@@ -332,4 +422,38 @@ function formatAnalystAnswer(raw: string) {
     .map((line) => line.trim())
     .filter(Boolean)
     .slice(0, 4);
+}
+
+function formatMove(move: number) {
+  if (!Number.isFinite(move)) return "0.00%";
+  const formatted = `${move >= 0 ? "+" : ""}${move.toFixed(2)}%`;
+  return formatted;
+}
+
+function describeSentiment(movePct: number, score: number | null) {
+  if (score != null) {
+    if (score >= 0.6) return "Bullish momentum";
+    if (score <= 0.4) return "Cautious tape";
+  }
+  if (movePct >= 2) return "Breakout strength";
+  if (movePct <= -2) return "Under pressure";
+  return "Neutral drift";
+}
+
+function describeTone(movePct: number) {
+  if (movePct >= 1.5) return "Risk-on rotation";
+  if (movePct >= 0.2) return "Leaning bullish";
+  if (movePct <= -1.5) return "Defensive bid";
+  if (movePct <= -0.2) return "Soft tone";
+  return "Stable";
+}
+
+function formatEarningsLine(event: EarningsItem) {
+  if (event.epsActual != null && event.epsEstimate != null) {
+    return `EPS ${event.epsActual.toFixed(2)} vs ${event.epsEstimate.toFixed(2)}`;
+  }
+  if (event.epsEstimate != null) {
+    return `EPS est ${event.epsEstimate.toFixed(2)}`;
+  }
+  return "EPS TBA";
 }

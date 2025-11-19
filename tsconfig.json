@@ -17,6 +17,7 @@
     "paths": {
       "@/*": ["./client/src/*"],
       "@shared/*": ["./shared/*"],
+      "axios": ["./server/lib/axiosShim"],
       "zod/v4": ["./node_modules/zod"],
       "zod/v4/*": ["./node_modules/zod/*"],
       "zod/v4-mini": ["./node_modules/zod"],
