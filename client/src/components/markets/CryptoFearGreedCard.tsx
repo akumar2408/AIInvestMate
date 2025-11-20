@@ -13,23 +13,27 @@ type CryptoFearGreedResponse = {
   };
 };
 
+type CryptoFearGreedCardProps = {
+  id?: string;
+};
+
 function classifyMood(value: number) {
   if (value <= 24) {
-    return { color: "text-rose-400", label: "Extreme Fear" };
+    return { tone: "status-negative", label: "Extreme Fear" };
   }
   if (value <= 44) {
-    return { color: "text-amber-400", label: "Fear" };
+    return { tone: "status-negative", label: "Fear" };
   }
   if (value <= 55) {
-    return { color: "text-slate-200", label: "Neutral" };
+    return { tone: "", label: "Neutral" };
   }
   if (value <= 74) {
-    return { color: "text-emerald-300", label: "Greed" };
+    return { tone: "status-positive", label: "Greed" };
   }
-  return { color: "text-lime-300", label: "Extreme Greed" };
+  return { tone: "status-positive", label: "Extreme Greed" };
 }
 
-export function CryptoFearGreedCard() {
+export function CryptoFearGreedCard({ id }: CryptoFearGreedCardProps) {
   const [data, setData] = useState<CryptoFearGreedResponse | null>(null);
   const [status, setStatus] = useState<"loading" | "error" | "ready">("loading");
 
@@ -63,69 +67,85 @@ export function CryptoFearGreedCard() {
 
   const mood = useMemo(() => classifyMood(data?.index?.value ?? 0), [data?.index?.value]);
 
-  const MarketRow = ({ label, price, change }: { label: string; price: number; change: number }) => (
-    <div className="flex items-center justify-between text-[13px] text-slate-300">
-      <span className="font-medium">{label}</span>
-      <div className="flex items-center gap-2">
-        <span>${price.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-        <span className={change >= 0 ? "text-emerald-300" : "text-rose-400"}>
-          {change >= 0 ? "+" : ""}
-          {change.toFixed(2)}%
-        </span>
+  const hasMarket = Boolean(data?.market?.btc || data?.market?.eth);
+
+  const renderCoinCard = (
+    label: string,
+    stats?: { priceUsd: number; change24h: number }
+  ) => {
+    if (!stats) return null;
+    const changeClass = stats.change24h >= 0 ? "market-change pos" : "market-change neg";
+    return (
+      <div key={label} className="market-card">
+        <div className="market-symbol">
+          <span>{label}</span>
+          <span className="badge">24h</span>
+        </div>
+        <div className="market-price-row">
+          <div>
+            <p className="muted tiny">Spot</p>
+            <div className="market-price">
+              ${stats.priceUsd.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </div>
+          </div>
+          <div className={changeClass}>
+            {stats.change24h >= 0 ? "+" : ""}
+            {stats.change24h.toFixed(2)}%
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
-    <div className="rounded-2xl border border-slate-700 bg-slate-900/70 p-5 flex flex-col gap-4 text-slate-100 h-full">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-slate-400">Crypto Fear & Greed</p>
-          <p className="text-[13px] text-slate-500">Index powered by alternative.me</p>
-        </div>
-        <span className="text-[11px] px-3 py-1 rounded-full border border-slate-600 bg-slate-800/60">
-          Sentiment
-        </span>
-      </div>
+    <div className="card pad" id={id}>
+      <div className="title">Crypto fear &amp; greed</div>
+      <p className="muted tiny">
+        Live index plus BTC/ETH snapshots powered by alternative.me and CoinGecko.
+      </p>
 
-      {status === "loading" && <p className="text-sm text-slate-400">Loading crypto sentiment…</p>}
+      {status === "loading" && (
+        <p className="muted tiny" style={{ marginTop: 12 }}>
+          Loading crypto sentiment…
+        </p>
+      )}
       {status === "error" && (
-        <p className="text-sm text-amber-300">Crypto sentiment is offline right now.</p>
+        <p className="status-negative tiny" style={{ marginTop: 12 }}>
+          Crypto sentiment is offline right now.
+        </p>
       )}
 
       {status === "ready" && data && (
         <>
-          <div className="flex items-baseline gap-4">
-            <span className="text-5xl font-bold text-white">{data.index?.value ?? "—"}</span>
-            <div className="flex flex-col">
-              <span className={`text-base font-semibold ${mood.color}`}>
+          <div className="stat-grid" style={{ marginTop: 18 }}>
+            <div className="stat-card">
+              <p className="label">Index value</p>
+              <div className="value">{data.index?.value ?? "—"}</div>
+              <p className={`${mood.tone || "muted"} tiny`}>
                 {data.index?.label || mood.label}
-              </span>
-              <span className="text-xs text-slate-400">
+              </p>
+            </div>
+            <div className="stat-card">
+              <p className="label">Last update</p>
+              <div className="value" style={{ fontSize: "1.1rem" }}>
                 {data.index?.updatedAt
                   ? new Date(data.index.updatedAt).toLocaleString()
                   : "Live data"}
-              </span>
+              </div>
+              <p className="muted tiny">Source {data.index?.source || "alternative.me"}</p>
             </div>
           </div>
 
-          {(data.market?.btc || data.market?.eth) && (
-            <div className="rounded-xl border border-slate-700/60 bg-slate-800/40 p-3 space-y-2">
-              {data.market?.btc && (
-                <MarketRow
-                  label="BTC"
-                  price={data.market.btc.priceUsd}
-                  change={data.market.btc.change24h}
-                />
-              )}
-              {data.market?.eth && (
-                <MarketRow
-                  label="ETH"
-                  price={data.market.eth.priceUsd}
-                  change={data.market.eth.change24h}
-                />
-              )}
-            </div>
+          {hasMarket && (
+            <>
+              <p className="muted tiny" style={{ marginTop: 20 }}>
+                Coin snapshots
+              </p>
+              <div className="market-grid">
+                {renderCoinCard("BTC", data.market?.btc)}
+                {renderCoinCard("ETH", data.market?.eth)}
+              </div>
+            </>
           )}
         </>
       )}

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { MarketPulse } from "@/components/MarketPulse";
-import { RedditMoodCard } from "@/components/markets/RedditMoodCard";
 import { CryptoFearGreedCard } from "@/components/markets/CryptoFearGreedCard";
 import { SimulatorPage } from "./simulator";
 
@@ -12,12 +11,6 @@ type SentimentItem = {
   symbol: string;
   movePct: number;
   sentimentScore: number | null;
-};
-
-type HeatmapSector = {
-  sector: string;
-  symbol: string;
-  movePct: number;
 };
 
 type EarningsItem = {
@@ -46,7 +39,7 @@ const backtests = [
   { name: "Green Energy", cagr: "10.2%", drawdown: "-11%", insight: "Momentum returning over last 60d" },
 ];
 
-function AnalystPanel({ watchlist }: { watchlist: SentimentItem[] }) {
+function AnalystPanel({ watchlist = [] }: { watchlist?: SentimentItem[] }) {
   const [question, setQuestion] = useState("What is sentiment saying about my watchlist?");
   const [answer, setAnswer] = useState("Tap ask to get the latest AI analyst briefing.");
   const [loading, setLoading] = useState(false);
@@ -131,8 +124,6 @@ function AnalystPanel({ watchlist }: { watchlist: SentimentItem[] }) {
 export function MarketsPage({ panel }: MarketsPageProps) {
   const highlightSimulator = panel === "sim";
   const [simModalOpen, setSimModalOpen] = useState(panel === "sim");
-  const [sentimentItems, setSentimentItems] = useState<SentimentItem[]>([]);
-  const [heatmapSectors, setHeatmapSectors] = useState<HeatmapSector[]>([]);
   const [earnings, setEarnings] = useState<EarningsItem[]>([]);
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [marketLoading, setMarketLoading] = useState(true);
@@ -162,16 +153,12 @@ export function MarketsPage({ panel }: MarketsPageProps) {
       return res.json();
     };
 
-    const [sentimentRes, heatmapRes, earningsRes, alertsRes] = await Promise.all([
-      fetchJson("/api/markets/sentiment"),
-      fetchJson("/api/markets/heatmap"),
+    const [earningsRes, alertsRes] = await Promise.all([
       fetchJson("/api/markets/earnings"),
       fetchJson("/api/markets/alerts"),
     ]);
 
     return {
-      sentiment: Array.isArray(sentimentRes?.items) ? sentimentRes.items : [],
-      heatmap: Array.isArray(heatmapRes?.sectors) ? heatmapRes.sectors : [],
       earnings: Array.isArray(earningsRes?.earnings) ? earningsRes.earnings : [],
       alerts: Array.isArray(alertsRes?.alerts) ? alertsRes.alerts : [],
     };
@@ -184,15 +171,11 @@ export function MarketsPage({ panel }: MarketsPageProps) {
       try {
         const data = await loadMarketData();
         if (!active) return;
-        setSentimentItems(data.sentiment);
-        setHeatmapSectors(data.heatmap);
         setEarnings(data.earnings);
         setAlerts(data.alerts);
       } catch (error) {
         if (active) {
           console.error("Markets data load failed", error);
-          setSentimentItems([]);
-          setHeatmapSectors([]);
           setEarnings([]);
           setAlerts([]);
         }
@@ -216,14 +199,15 @@ export function MarketsPage({ panel }: MarketsPageProps) {
       <div className="card pad">
         <div className="title">Markets 🔥 workspace</div>
         <p className="subtle">
-          Bloomberg-light view of everything that matters: watchlists, heat map, earnings, alerts, AI commentary, and backtests.
+          Bloomberg-light view of everything that matters: live pulse, crypto sentiment, earnings, alerts, AI commentary, and backtests.
         </p>
         <div className="pill-row" style={{ marginTop: 16 }}>
           {[
             { label: "MarketPulse", target: "pulse" },
-            { label: "Sentiment watchlist", target: "watchlist" },
-            { label: "Heat map", target: "heatmap" },
+            { label: "Crypto sentiment", target: "crypto-sentiment" },
+            { label: "Earnings", target: "earnings" },
             { label: "Backtests & simulator", target: "backtests" },
+            { label: "AI analyst", target: "analyst" },
           ].map((link) => (
             <button
               key={link.target}
@@ -244,73 +228,9 @@ export function MarketsPage({ panel }: MarketsPageProps) {
             <MarketPulse />
           </div>
 
-          <div className="card pad" id="watchlist">
-            <div className="title">Sentiment-powered watchlist</div>
-            {sentimentItems.length ? (
-              <div className="market-grid">
-                {sentimentItems.map((row) => {
-                  const moveLabel = formatMove(row.movePct);
-                  const badge = describeSentiment(row.movePct, row.sentimentScore);
-                  const score =
-                    row.sentimentScore != null ? `${Math.round(row.sentimentScore * 100)} score` : "Score —";
-                  return (
-                    <div key={row.symbol} className="market-card">
-                      <div className="market-symbol">
-                        <span>{row.symbol}</span>
-                        <span className="badge">{badge}</span>
-                      </div>
-                      <div className="market-price-row">
-                        <div>
-                          <p className="muted tiny">Move</p>
-                          <div className="market-price">{moveLabel}</div>
-                        </div>
-                        <div className={`market-change ${row.movePct < 0 ? "neg" : "pos"}`}>
-                          {score}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="muted tiny">
-                {marketLoading ? "Loading market data…" : "Sentiment data unavailable right now."}
-              </p>
-            )}
-          </div>
+          <CryptoFearGreedCard id="crypto-sentiment" />
 
-          <div className="card pad" id="heatmap">
-            <div className="title">Market heat map</div>
-            {heatmapSectors.length ? (
-              <div className="heatmap">
-                {heatmapSectors.map((tile) => {
-                  const moveLabel = formatMove(tile.movePct);
-                  const tone = describeTone(tile.movePct);
-                  return (
-                    <div key={tile.sector} className="heat-tile">
-                      <strong>{tile.sector}</strong>
-                      <p className={tile.movePct < 0 ? "status-negative" : "status-positive"}>{moveLabel}</p>
-                      <p className="muted tiny">{tone}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="muted tiny">
-                {marketLoading ? "Loading sector moves…" : "Heat map data unavailable."}
-              </p>
-            )}
-          </div>
-
-          <div className="card pad">
-            <div className="title">Alternative sentiment</div>
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-              <RedditMoodCard />
-              <CryptoFearGreedCard />
-            </div>
-          </div>
-
-          <div className="card pad">
+          <div className="card pad" id="alerts">
             <div className="title">Alert center</div>
             {alerts.length ? (
               <ul className="list-clean">
@@ -389,7 +309,7 @@ export function MarketsPage({ panel }: MarketsPageProps) {
             </button>
           </div>
 
-          <AnalystPanel watchlist={sentimentItems} />
+          <AnalystPanel />
 
           <div className="card pad">
             <div className="title">Predictive commentary</div>
@@ -433,30 +353,6 @@ function formatAnalystAnswer(raw: string) {
     .map((line) => line.trim())
     .filter(Boolean)
     .slice(0, 4);
-}
-
-function formatMove(move: number) {
-  if (!Number.isFinite(move)) return "0.00%";
-  const formatted = `${move >= 0 ? "+" : ""}${move.toFixed(2)}%`;
-  return formatted;
-}
-
-function describeSentiment(movePct: number, score: number | null) {
-  if (score != null) {
-    if (score >= 0.6) return "Bullish momentum";
-    if (score <= 0.4) return "Cautious tape";
-  }
-  if (movePct >= 2) return "Breakout strength";
-  if (movePct <= -2) return "Under pressure";
-  return "Neutral drift";
-}
-
-function describeTone(movePct: number) {
-  if (movePct >= 1.5) return "Risk-on rotation";
-  if (movePct >= 0.2) return "Leaning bullish";
-  if (movePct <= -1.5) return "Defensive bid";
-  if (movePct <= -0.2) return "Soft tone";
-  return "Stable";
 }
 
 function formatEarningsLine(event: EarningsItem) {
