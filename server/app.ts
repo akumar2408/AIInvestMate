@@ -1,7 +1,5 @@
 // server/app.ts
 import express from "express";
-import path from "path";
-import { fileURLToPath } from "url";
 import OpenAI from "openai";
 import axios from "axios";
 import {
@@ -16,8 +14,6 @@ import { aiService } from "./services/openai";
 import redditRoutes from "./redditRoutes";
 import cryptoRoutes from "./cryptoRoutes";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY?.trim();
 const FINNHUB_BASE_URL = "https://finnhub.io/api/v1";
 const TIME_MACHINE_LOOKBACK: Record<string, number> = {
@@ -30,6 +26,11 @@ const app = express();
 app.use(express.json());
 app.use(redditRoutes);
 app.use(cryptoRoutes);
+
+// --- Root health check for API-only mode ---
+app.get("/", (_req, res) => {
+  res.json({ status: "ok" });
+});
 
 // --- Health check ---
 app.get("/api/health", (_req, res) => {
@@ -296,13 +297,6 @@ app.get("/api/markets/alerts", async (_req, res) => {
     console.error("alerts endpoint error", error);
     res.status(500).json({ error: "Failed to fetch alerts" });
   }
-});
-
-// Serve client in production
-const clientDist = path.resolve(__dirname, "../dist/public");
-app.use(express.static(clientDist));
-app.get("*", (_req, res) => {
-  res.sendFile(path.join(clientDist, "index.html"));
 });
 
 const PORT = parseInt(process.env.PORT || "5001", 10);
